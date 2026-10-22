@@ -1,43 +1,4 @@
-import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
-
-/// Où déposer un bloc glissé dans la frise.
-enum BlockDropTarget: Equatable {
-    case relative(WorkoutBlock.ID, after: Bool)
-    case intoRepeat(WorkoutBlock.ID)
-    case end
-}
-
-/// Contenu glissé : un bloc existant ou un nouveau bloc venant de la palette.
-enum BlockDragPayload {
-    case existing(WorkoutBlock.ID)
-    case new(WorkoutBlock.Kind)
-
-    private static let existingPrefix = "fmht-block:"
-    private static let newPrefix = "fmht-new:"
-
-    var string: String {
-        switch self {
-        case .existing(let id): Self.existingPrefix + id.uuidString
-        case .new(let kind): Self.newPrefix + kind.rawValue
-        }
-    }
-
-    init?(_ string: String) {
-        if string.hasPrefix(Self.existingPrefix),
-           let id = UUID(uuidString: String(string.dropFirst(Self.existingPrefix.count))) {
-            self = .existing(id)
-        } else if string.hasPrefix(Self.newPrefix),
-                  let kind = WorkoutBlock.Kind(rawValue: String(string.dropFirst(Self.newPrefix.count))) {
-            self = .new(kind)
-        } else {
-            return nil
-        }
-    }
-
-    func itemProvider() -> NSItemProvider { NSItemProvider(object: string as NSString) }
-}
 
 /// Frise de la séance : chaque bloc est une barre (largeur = durée, hauteur = puissance).
 /// Clic pour sélectionner, glisser pour déplacer.
@@ -45,17 +6,14 @@ struct BlockTimeline: View {
     let blocks: [WorkoutBlock]
     let ftp: Int
     @Binding var selectedID: WorkoutBlock.ID?
-    let onDrop: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
+    /// Positions des éléments, mesurées ici et lues par l'éditeur pendant un glisser.
+    let frames: BlockFrames
+    let drag: BlockDrag?
+    let onDragChanged: (BlockDragPayload, CGPoint) -> Void
+    let onDragEnded: (CGPoint) -> Void
     let onChangeCount: (WorkoutBlock.ID, Int) -> Void
     /// Bloc modifié en tirant sur ses bords.
     let onUpdate: (WorkoutBlock) -> Void
-
-    /// Emplacement de dépôt survolé, partagé par toute la frise : un seul repère à la fois,
-    /// effacé au dépôt, à l'annulation du glisser ou dès que la séance change.
-    @State private var dropHover: (id: WorkoutBlock.ID, side: HoverSide)?
-    /// Juste après un dépôt, macOS envoie encore un « survol » au bloc qui se retrouve sous
-    /// le pointeur pendant la réorganisation : on l'ignore pour ne pas réafficher le repère.
-    @State private var ignoreHoverUntil = Date.distantPast
 
     static let barHeight: CGFloat = 150
     /// Espace entre deux blocs ; le repère d'insertion est dessiné en son milieu.
@@ -71,7 +29,7 @@ struct BlockTimeline: View {
             ScrollView(.horizontal) {
                 HStack(alignment: .bottom, spacing: Self.gap) {
                     ForEach(blocks) { block in element(block, depth: 0, scale: scale) }
-                    if blocks.isEmpty { EmptyDropZone(onDrop: onDrop) }
+                    if blocks.isEmpty { EmptyDropZone(isTargeted: drag?.target == .end) }
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
@@ -85,37 +43,18 @@ struct BlockTimeline: View {
         .frame(height: Self.barHeight + 100 + CGFloat(max(blocks.nestingDepth - 1, 0)) * Self.groupHeader)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
         .overlay(alignment: .bottomLeading) { ftpLine }
-        .onChange(of: blocks) { dropHover = nil }
-        .task(id: dropHover != nil) { await clearMarkerWhenMouseReleased() }
-    }
-
-    /// macOS ne signale pas toujours la fin d'un glisser (selon l'endroit où l'on lâche).
-    /// Tant qu'un repère est affiché, on vérifie donc le bouton de la souris : relâché,
-    /// le glisser est forcément terminé et le repère disparaît.
-    private func clearMarkerWhenMouseReleased() async {
-        while dropHover != nil, !Task.isCancelled {
-            try? await Task.sleep(for: .milliseconds(150))
-            if NSEvent.pressedMouseButtons & 1 == 0 { dropHover = nil }
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: EditorSpace.coordinateSpace) } action: {
+            frames.timeline = $0
         }
     }
 
-    /// Fin d'un dépôt : efface le repère et ignore les survols tardifs pendant la réorganisation.
-    private func endDrop() {
-        dropHover = nil
-        ignoreHoverUntil = Date().addingTimeInterval(0.5)
+    private var draggedID: WorkoutBlock.ID? {
+        if case .existing(let id) = drag?.payload { return id }
+        return nil
     }
 
-    private func hoverBinding(for id: WorkoutBlock.ID) -> Binding<HoverSide?> {
-        Binding(get: { dropHover?.id == id ? dropHover?.side : nil },
-                set: { side in
-                    if let side {
-                        let dragging = NSEvent.pressedMouseButtons & 1 != 0
-                        guard dragging, Date() >= ignoreHoverUntil else { return }
-                        dropHover = (id, side)
-                    } else if dropHover?.id == id {
-                        dropHover = nil
-                    }
-                })
+    private func measure(_ id: WorkoutBlock.ID, isRepeat: Bool, depth: Int) -> (CGRect) -> Void {
+        { [frames] rect in frames.items[id] = BlockFrames.Item(rect: rect, isRepeat: isRepeat, depth: depth) }
     }
 
     /// Distance entre le bas de la frise et le bas des barres :
@@ -162,32 +101,34 @@ struct BlockTimeline: View {
 
     // MARK: - Éléments
 
-    private func bar(_ block: WorkoutBlock, scale: CGFloat) -> some View {
+    private func bar(_ block: WorkoutBlock, depth: Int, scale: CGFloat) -> some View {
         BlockBar(block: block, ftp: ftp, maxWatts: maxWatts, scale: scale,
                  isSelected: selectedID == block.id,
-                 hover: hoverBinding(for: block.id),
-                 clearHover: endDrop,
                  onSelect: { selectedID = block.id },
                  onUpdate: { updated in
                      selectedID = updated.id
                      onUpdate(updated)
                  },
-                 onDrop: onDrop)
+                 onDragChanged: { onDragChanged(.existing(block.id), $0) },
+                 onDragEnded: onDragEnded)
+            .opacity(draggedID == block.id ? 0.35 : 1)
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: EditorSpace.coordinateSpace) },
+                              action: measure(block.id, isRepeat: false, depth: depth))
     }
 
     /// Bloc ou répétition ; récursif pour les répétitions imbriquées (d'où `AnyView`).
     private func element(_ block: WorkoutBlock, depth: Int, scale: CGFloat) -> AnyView {
         block.kind == .repeats ? AnyView(repeatGroup(block, depth: depth, scale: scale))
-                               : AnyView(bar(block, scale: scale))
+                               : AnyView(bar(block, depth: depth, scale: scale))
     }
 
     private func repeatGroup(_ block: WorkoutBlock, depth: Int, scale: CGFloat) -> some View {
         RepeatGroup(block: block, depth: depth, isSelected: selectedID == block.id,
-                    hover: hoverBinding(for: block.id),
-                    clearHover: endDrop,
+                    isDropTarget: drag?.target == .intoRepeat(block.id),
                     onSelect: { selectedID = block.id },
                     onChangeCount: { onChangeCount(block.id, $0) },
-                    onDrop: onDrop) {
+                    onDragChanged: { onDragChanged(.existing(block.id), $0) },
+                    onDragEnded: onDragEnded) {
             HStack(alignment: .bottom, spacing: Self.gap) {
                 ForEach(block.blocks) { child in element(child, depth: depth + 1, scale: scale) }
                 if block.blocks.isEmpty {
@@ -198,12 +139,22 @@ struct BlockTimeline: View {
                 }
             }
         }
+        .opacity(draggedID == block.id ? 0.35 : 1)
+        .onGeometryChange(for: CGRect.self, of: { $0.frame(in: EditorSpace.coordinateSpace) },
+                          action: measure(block.id, isRepeat: true, depth: depth))
     }
 }
 
-// MARK: - Barre d'un bloc
+/// Geste de déplacement d'un bloc, mesuré dans le repère de l'éditeur.
+@MainActor
+private func moveGesture(onChanged: @escaping (CGPoint) -> Void,
+                         onEnded: @escaping (CGPoint) -> Void) -> some Gesture {
+    DragGesture(minimumDistance: 4, coordinateSpace: EditorSpace.coordinateSpace)
+        .onChanged { onChanged($0.location) }
+        .onEnded { onEnded($0.location) }
+}
 
-private enum HoverSide { case before, after, inside }
+// MARK: - Barre d'un bloc
 
 private struct BlockBar: View {
     let block: WorkoutBlock
@@ -212,11 +163,10 @@ private struct BlockBar: View {
     /// Points par seconde (pour convertir un glissement horizontal en durée).
     let scale: CGFloat
     let isSelected: Bool
-    @Binding var hover: HoverSide?
-    let clearHover: () -> Void
     let onSelect: () -> Void
     let onUpdate: (WorkoutBlock) -> Void
-    let onDrop: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
+    let onDragChanged: (CGPoint) -> Void
+    let onDragEnded: (CGPoint) -> Void
     /// Valeurs provisoires pendant un redimensionnement (validées au relâchement).
     @State private var draftDuration: TimeInterval?
     @State private var draftStart: Double?
@@ -245,9 +195,6 @@ private struct BlockBar: View {
             }
             .frame(width: width, height: height)
             .overlay(alignment: .topLeading) { resizeHandles }
-            .overlay(alignment: hover == .after ? .trailing : .leading) {
-                if hover == .before || hover == .after { InsertionMarker(after: hover == .after) }
-            }
 
             // Hauteurs fixes : un libellé rétréci ne doit pas décaler la barre verticalement.
             Text(Format.duration(duration))
@@ -263,11 +210,7 @@ private struct BlockBar: View {
         .frame(width: width)
         .contentShape(Rectangle())
         .onTapGesture(perform: onSelect)
-        .onDrag { BlockDragPayload.existing(block.id).itemProvider() }
-        .onDrop(of: [.plainText], delegate: SideDropDelegate(
-            width: width, hover: $hover,
-            target: { side in .relative(block.id, after: side == .after) },
-            perform: onDrop, onFinish: clearHover))
+        .gesture(moveGesture(onChanged: onDragChanged, onEnded: onDragEnded))
         .help("Clique pour modifier · glisse pour déplacer · tire le bord droit (durée) ou le haut (puissance)")
     }
 
@@ -397,22 +340,6 @@ struct RampShape: Shape {
     }
 }
 
-/// Repère discret indiquant où le bloc glissé sera déposé.
-/// « Après A » et « avant B » désignent le même emplacement : le repère est donc décalé
-/// au milieu de l'espace entre les deux blocs, pour apparaître toujours au même endroit.
-private struct InsertionMarker: View {
-    let after: Bool
-    private static let width: CGFloat = 2
-
-    var body: some View {
-        Capsule()
-            .fill(Color.gray.opacity(0.6))
-            .frame(width: Self.width)
-            .padding(.vertical, 12)
-            .offset(x: (BlockTimeline.gap + Self.width) / 2 * (after ? 1 : -1))
-    }
-}
-
 // MARK: - Groupe de répétition
 
 private struct RepeatGroup<Content: View>: View {
@@ -420,13 +347,13 @@ private struct RepeatGroup<Content: View>: View {
     /// Niveau d'imbrication (0 = répétition de premier niveau).
     let depth: Int
     let isSelected: Bool
-    @Binding var hover: HoverSide?
-    let clearHover: () -> Void
+    /// Un bloc glissé sera déposé dans cette répétition.
+    let isDropTarget: Bool
     let onSelect: () -> Void
     let onChangeCount: (Int) -> Void
-    let onDrop: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
+    let onDragChanged: (CGPoint) -> Void
+    let onDragEnded: (CGPoint) -> Void
     @ViewBuilder let content: Content
-    @State private var width: CGFloat = 200
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -448,21 +375,11 @@ private struct RepeatGroup<Content: View>: View {
         // quel que soit leur niveau d'imbrication, restent sur la même ligne de base.
         .background(frame.fill(Color.primary.opacity(0.06)).padding(.bottom, -bottomOverflow))
         .overlay(frame
-            .strokeBorder(borderColor, style: StrokeStyle(lineWidth: 2, dash: hover == .inside ? [] : [5, 4]))
+            .strokeBorder(borderColor, style: StrokeStyle(lineWidth: 2, dash: isDropTarget ? [] : [5, 4]))
             .padding(.bottom, -bottomOverflow))
-        .overlay(alignment: hover == .after ? .trailing : .leading) {
-            if hover == .before || hover == .after { InsertionMarker(after: hover == .after) }
-        }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .contentShape(Rectangle())
         .onTapGesture(perform: onSelect)
-        .onDrag { BlockDragPayload.existing(block.id).itemProvider() }
-        .onDrop(of: [.plainText], delegate: SideDropDelegate(
-            width: width, hover: $hover, edge: 18,
-            target: { side in
-                side == .inside ? .intoRepeat(block.id) : .relative(block.id, after: side == .after)
-            },
-            perform: onDrop, onFinish: clearHover))
+        .gesture(moveGesture(onChanged: onDragChanged, onEnded: onDragEnded))
     }
 
     private var frame: RoundedRectangle { RoundedRectangle(cornerRadius: 10) }
@@ -471,79 +388,25 @@ private struct RepeatGroup<Content: View>: View {
     private var bottomOverflow: CGFloat { max(8 - CGFloat(depth) * 3, 2) }
 
     private var borderColor: Color {
-        if hover == .inside || isSelected { return .accentColor }
+        if isDropTarget || isSelected { return .accentColor }
         return .secondary.opacity(0.5)
     }
 }
 
 // MARK: - Séance vide
 
-/// Zone de dépôt affichée seulement quand la séance ne contient encore aucun bloc.
+/// Zone affichée quand la séance ne contient encore aucun bloc.
 private struct EmptyDropZone: View {
-    let onDrop: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
-    @State private var hover: HoverSide?
+    let isTargeted: Bool
 
     var body: some View {
         RoundedRectangle(cornerRadius: 10)
-            .strokeBorder(hover != nil ? Color.accentColor : .secondary.opacity(0.4),
+            .strokeBorder(isTargeted ? Color.accentColor : .secondary.opacity(0.4),
                           style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
             .overlay {
                 Text("Ajoute un premier bloc").font(.callout).foregroundStyle(.secondary)
             }
             .frame(width: 220, height: BlockTimeline.barHeight)
             .padding(.bottom, 38)
-            .onDrop(of: [.plainText], delegate: SideDropDelegate(
-                width: 220, hover: $hover, target: { _ in .end }, perform: onDrop))
-            .task(id: hover != nil) {
-                while hover != nil, !Task.isCancelled {
-                    try? await Task.sleep(for: .milliseconds(150))
-                    if NSEvent.pressedMouseButtons & 1 == 0 { hover = nil }
-                }
-            }
-    }
-}
-
-// MARK: - Dépôt
-
-/// Déduit l'emplacement de dépôt (avant / après / dedans) de la position du pointeur.
-private struct SideDropDelegate: DropDelegate {
-    let width: CGFloat
-    @Binding var hover: HoverSide?
-    /// Largeur des bords « avant / après » ; 0 = moitié gauche / moitié droite.
-    var edge: CGFloat = 0
-    let target: (HoverSide) -> BlockDropTarget
-    let perform: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
-    /// Appelé à la fin d'un dépôt : efface tous les repères de la frise, pas seulement le sien
-    /// (dans une répétition, le bloc et la répétition sont deux zones superposées).
-    var onFinish: () -> Void = {}
-
-    private func side(_ info: DropInfo) -> HoverSide {
-        let x = info.location.x
-        if edge == 0 { return x < width / 2 ? .before : .after }
-        if x < edge { return .before }
-        if x > width - edge { return .after }
-        return .inside
-    }
-
-    func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: [.plainText]) }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        hover = side(info)
-        return DropProposal(operation: .move)
-    }
-
-    func dropExited(info: DropInfo) { hover = nil }
-
-    func performDrop(info: DropInfo) -> Bool {
-        let destination = target(side(info))
-        hover = nil
-        onFinish()
-        guard let provider = info.itemProviders(for: [.plainText]).first else { return false }
-        let perform = self.perform
-        _ = provider.loadObject(ofClass: NSString.self) { object, _ in
-            guard let string = object as? NSString, let payload = BlockDragPayload(string as String) else { return }
-            Task { @MainActor in perform(payload, destination) }
-        }
-        return true
     }
 }

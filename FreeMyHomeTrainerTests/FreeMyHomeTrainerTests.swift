@@ -152,6 +152,56 @@ struct WorkoutModelTests {
     }
 }
 
+// MARK: - Glisser-déposer de l'éditeur
+
+struct BlockDropResolverTests {
+    // Frise : [A] [Répétition (C)] [B], positions fictives dans le repère de l'éditeur.
+    let a = WorkoutBlock.steady(60, .watts(100))
+    let c = WorkoutBlock.steady(60, .watts(200))
+    let b = WorkoutBlock.steady(60, .watts(150))
+    let rep: WorkoutBlock
+
+    init() { rep = .repeats(2, [c]) }
+
+    func resolve(_ x: CGFloat, _ y: CGFloat, dragging payload: BlockDragPayload) -> BlockDropTarget? {
+        let items: [WorkoutBlock.ID: BlockFrames.Item] = [
+            a.id: .init(rect: CGRect(x: 0, y: 40, width: 100, height: 190), isRepeat: false, depth: 0),
+            rep.id: .init(rect: CGRect(x: 104, y: 0, width: 200, height: 230), isRepeat: true, depth: 0),
+            c.id: .init(rect: CGRect(x: 116, y: 40, width: 80, height: 190), isRepeat: false, depth: 1),
+            b.id: .init(rect: CGRect(x: 308, y: 40, width: 100, height: 190), isRepeat: false, depth: 0),
+        ]
+        return BlockDropResolver.target(at: CGPoint(x: x, y: y), payload: payload, blocks: [a, rep, b],
+                                        items: items, timeline: CGRect(x: 0, y: 0, width: 500, height: 260))
+    }
+
+    @Test func halvesOfABlock() {
+        #expect(resolve(30, 100, dragging: .existing(b.id)) == .relative(a.id, after: false))
+        #expect(resolve(80, 100, dragging: .existing(b.id)) == .relative(a.id, after: true))
+        #expect(resolve(150, 100, dragging: .existing(b.id)) == .relative(c.id, after: false))
+    }
+
+    @Test func repeatEdgesAndInside() {
+        #expect(resolve(110, 100, dragging: .existing(b.id)) == .relative(rep.id, after: false))
+        #expect(resolve(300, 100, dragging: .existing(b.id)) == .relative(rep.id, after: true))
+        #expect(resolve(250, 100, dragging: .existing(b.id)) == .intoRepeat(rep.id))
+        #expect(resolve(250, 100, dragging: .new(.steady)) == .intoRepeat(rep.id))
+    }
+
+    @Test func gapsAndOutside() {
+        // Hors de toute zone (au-dessus des barres) : d'après la position horizontale.
+        #expect(resolve(350, 20, dragging: .existing(a.id)) == .relative(b.id, after: false))
+        #expect(resolve(450, 20, dragging: .existing(a.id)) == .relative(b.id, after: true))
+        #expect(resolve(600, 100, dragging: .existing(a.id)) == nil)          // hors de la frise
+    }
+
+    @Test func invalidTargets() {
+        #expect(resolve(30, 100, dragging: .existing(a.id)) == nil)            // sur lui-même
+        #expect(resolve(150, 100, dragging: .existing(rep.id)) == nil)         // dans ses sous-blocs
+        #expect(BlockDropResolver.target(at: CGPoint(x: 10, y: 10), payload: .new(.steady), blocks: [],
+                                         items: [:], timeline: CGRect(x: 0, y: 0, width: 100, height: 100)) == .end)
+    }
+}
+
 // MARK: - Bluetooth FTMS
 
 struct FTMSParserTests {

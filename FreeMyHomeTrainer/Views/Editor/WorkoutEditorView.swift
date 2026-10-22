@@ -7,7 +7,9 @@ struct WorkoutEditorView: View {
     @AppStorage(Settings.ftpKey) private var ftp = 200
     @State private var draft: Workout
     @State private var selectedID: WorkoutBlock.ID?
-    @State private var lastDrop: (payload: String, date: Date)?
+    /// Glisser en cours (bloc existant ou nouveau bloc de la palette).
+    @State private var drag: BlockDrag?
+    @State private var frames = BlockFrames()
 
     init(saved: SavedWorkout, onRide: @escaping () -> Void) {
         self.saved = saved
@@ -24,7 +26,8 @@ struct WorkoutEditorView: View {
                     .frame(height: 56)
                 palette
                 BlockTimeline(blocks: draft.blocks, ftp: ftp, selectedID: $selectedID,
-                              onDrop: handleDrop,
+                              frames: frames, drag: drag,
+                              onDragChanged: dragChanged, onDragEnded: dragEnded,
                               onChangeCount: { id, count in
                                   guard var b = draft.blocks.find(id) else { return }
                                   b.count = min(max(count, 1), 50)
@@ -34,6 +37,12 @@ struct WorkoutEditorView: View {
                 editBar
             }
             .padding(20)
+            .coordinateSpace(EditorSpace.coordinateSpace)
+            .overlay {
+                if let drag {
+                    BlockDragOverlay(drag: drag, frames: frames, blocks: draft.blocks, ftp: ftp)
+                }
+            }
         }
         .focusable()
         .focusEffectDisabled()
@@ -71,8 +80,12 @@ struct WorkoutEditorView: View {
         HStack(spacing: 8) {
             Text("Ajouter :").foregroundStyle(.secondary)
             // Un bloc est constant à sa création ; il devient une rampe via la barre d'édition.
-            PaletteItem(title: "Bloc", icon: "rectangle.fill", kind: .steady) { add(newBlock(.steady)) }
-            PaletteItem(title: "Répétition", icon: "repeat", kind: .repeats) { add(newBlock(.repeats)) }
+            PaletteItem(title: "Bloc", icon: "rectangle.fill",
+                        onTap: { add(newBlock(.steady)) },
+                        onDragChanged: { dragChanged(.new(.steady), $0) }, onDragEnded: dragEnded)
+            PaletteItem(title: "Répétition", icon: "repeat",
+                        onTap: { add(newBlock(.repeats)) },
+                        onDragChanged: { dragChanged(.new(.repeats), $0) }, onDragEnded: dragEnded)
             Spacer(minLength: 0)
         }
     }
@@ -125,16 +138,25 @@ struct WorkoutEditorView: View {
         selectedID = block.id
     }
 
-    /// Animation des réorganisations (dépôt, ajout, suppression).
+    /// Animation des ajouts et suppressions.
     private static let blockAnimation = Animation.easeInOut(duration: 0.2)
 
-    private func handleDrop(_ payload: BlockDragPayload, _ target: BlockDropTarget) {
-        // Dans une répétition, le bloc et la répétition sont deux zones de dépôt superposées :
-        // un même lâcher peut arriver deux fois. On n'applique que le premier.
-        let now = Date()
-        if let last = lastDrop, last.payload == payload.string, now.timeIntervalSince(last.date) < 0.5 { return }
-        lastDrop = (payload.string, now)
-        withAnimation(Self.blockAnimation) { applyDrop(payload, target) }
+    // MARK: - Glisser-déposer
+
+    private func dragChanged(_ payload: BlockDragPayload, _ location: CGPoint) {
+        let target = BlockDropResolver.target(at: location, payload: payload, blocks: draft.blocks,
+                                              items: frames.items, timeline: frames.timeline)
+        drag = BlockDrag(payload: payload, location: location, target: target)
+    }
+
+    /// Lâcher : le bloc est posé directement à l'emplacement indiqué par le repère, sans
+    /// animation de trajet (l'étiquette qui suivait le pointeur s'y trouve déjà).
+    private func dragEnded(_ location: CGPoint) {
+        guard let current = drag else { return }
+        let target = BlockDropResolver.target(at: location, payload: current.payload, blocks: draft.blocks,
+                                              items: frames.items, timeline: frames.timeline)
+        drag = nil
+        if let target { applyDrop(current.payload, target) }
     }
 
     private func applyDrop(_ payload: BlockDragPayload, _ target: BlockDropTarget) {
@@ -184,19 +206,26 @@ struct WorkoutEditorView: View {
     }
 }
 
+/// Bouton de la palette : clic = ajout, glisser = dépôt à l'endroit voulu dans la frise.
 private struct PaletteItem: View {
     let title: String
     let icon: String
-    let kind: WorkoutBlock.Kind
-    let action: () -> Void
+    let onTap: () -> Void
+    let onDragChanged: (CGPoint) -> Void
+    let onDragEnded: (CGPoint) -> Void
 
     var body: some View {
-        Button(action: action) {
-            Label(title, systemImage: icon)
-                .lineLimit(1)
-                .fixedSize()
-        }
-        .onDrag { BlockDragPayload.new(kind).itemProvider() }
-        .help("Clique pour ajouter, ou glisse dans la frise")
+        Label(title, systemImage: icon)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onTap)
+            .gesture(DragGesture(minimumDistance: 4, coordinateSpace: EditorSpace.coordinateSpace)
+                .onChanged { onDragChanged($0.location) }
+                .onEnded { onDragEnded($0.location) })
+            .help("Clique pour ajouter, ou glisse dans la frise")
     }
 }

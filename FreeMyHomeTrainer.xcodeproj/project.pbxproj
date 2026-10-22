@@ -21,6 +21,7 @@
 		60DF425AFA23E894C641012F /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5803BDDFC842B3995984A861 /* RideView.swift */; };
 		6152E860AC19EC25C0FCDBDB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 53144CEFDCB0C40CA29E3A6A /* Assets.xcassets */; };
 		64687CD55F2963B035A3941A /* VirtualBike.swift in Sources */ = {isa = PBXBuildFile; fileRef = 731525CDD980AAC6226BEDBA /* VirtualBike.swift */; };
+		65F1B7547D8B7CF3FFF06691 /* BlockDrag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975D3896F35C1AD4C1FC0CDC /* BlockDrag.swift */; };
 		6765D16693567985D9C3C95D /* IntensityRating.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3722F2EE869D6B3C8F339894 /* IntensityRating.swift */; };
 		688B90E8F1362EA92D9C6B46 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8394D2A40CB6C42A11EEC6 /* SettingsView.swift */; };
 		7118FB545DB8125F6DD6549D /* DevicesPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE1FBDC32370741BBD0A752 /* DevicesPanel.swift */; };
@@ -72,6 +73,7 @@
 		762D255797D536FD6F0E4BDE /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		81FBACACD07BDF2F44512052 /* FreeMyHomeTrainerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FreeMyHomeTrainerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		91243D630AAA1070AD1E18FD /* FTMSParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FTMSParser.swift; sourceTree = "<group>"; };
+		975D3896F35C1AD4C1FC0CDC /* BlockDrag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDrag.swift; sourceTree = "<group>"; };
 		9B74FE814B76070EBE93518B /* ActivityMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityMetrics.swift; sourceTree = "<group>"; };
 		9D35515D18748CBAFAD62E72 /* WorkoutBlockTree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutBlockTree.swift; sourceTree = "<group>"; };
 		9FC6EA4601DAA49D08E8F024 /* UploadCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadCenter.swift; sourceTree = "<group>"; };
@@ -155,6 +157,7 @@
 		905B7C60B8285A22831FCA54 /* Editor */ = {
 			isa = PBXGroup;
 			children = (
+				975D3896F35C1AD4C1FC0CDC /* BlockDrag.swift */,
 				64D27D8B13E9D37C32DA2AD2 /* BlockEditBar.swift */,
 				215AB9F2542D404814BE3ED7 /* BlockTimeline.swift */,
 				EE5EC75BB4ECD5680A918C05 /* WorkoutEditorView.swift */,
@@ -378,6 +381,7 @@
 				7937BDA3817FF23D5C6E2086 /* AccountsPanel.swift in Sources */,
 				1F5DD6313D9D13C7C4E41754 /* ActivityMetrics.swift in Sources */,
 				B3E0A1EDC6958A374238197E /* ActivitySaver.swift in Sources */,
+				65F1B7547D8B7CF3FFF06691 /* BlockDrag.swift in Sources */,
 				F366C07C9C76EE354FD355F6 /* BlockEditBar.swift in Sources */,
 				C8B7DFF366DFB64210E4CA8B /* BlockTimeline.swift in Sources */,
 				5C7589F4E384E637C5821B2E /* DeviceManager.swift in Sources */,
