@@ -181,6 +181,8 @@ struct ActivityStatsGrid: View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), alignment: .leading)], spacing: 14) {
             StatView(title: "Durée", value: Format.clock(activity.timerTime))
             StatView(title: "Distance", value: String(format: "%.1f km", activity.distance / 1000))
+            StatView(title: "Vitesse moy.", value: activity.timerTime > 0
+                     ? String(format: "%.1f km/h", activity.distance / activity.timerTime * 3.6) : "–")
             StatView(title: "Puissance moy.", value: "\(activity.avgPower) W")
             StatView(title: "Puissance max", value: "\(activity.maxPower) W")
             VStack(alignment: .leading, spacing: 2) {

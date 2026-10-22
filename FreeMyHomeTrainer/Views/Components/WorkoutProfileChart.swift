@@ -22,6 +22,8 @@ struct WorkoutProfileChart: View {
     var progress: TimeInterval?
     var highlightedRange: Range<TimeInterval>?
     var showAxes = true
+    /// Trait de la FTP (par défaut : affiché avec les axes).
+    var showFTPLine: Bool?
 
     private struct Bar: Identifiable {
         let id: Int
@@ -54,7 +56,7 @@ struct WorkoutProfileChart: View {
                     .foregroundStyle(bar.zone.color.opacity(isHighlighted(bar) ? 1 : dimmedOpacity))
                     .cornerRadius(bar.isRampStep ? 0 : 3)
             }
-            if timeline.ftp > 0, showAxes {
+            if timeline.ftp > 0, showFTPLine ?? showAxes {
                 RuleMark(y: .value("FTP", timeline.ftp))
                     .foregroundStyle(.secondary.opacity(0.6))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -63,7 +65,8 @@ struct WorkoutProfileChart: View {
                     }
             }
             ForEach(actual, id: \.elapsed) { s in
-                LineMark(x: .value("Temps", s.elapsed), y: .value("Puissance", s.power ?? 0))
+                // Position dans la séance : les intervalles sautés laissent un trou, pas un décalage.
+                LineMark(x: .value("Temps", s.position ?? s.elapsed), y: .value("Puissance", s.power ?? 0))
                     .foregroundStyle(.primary)
                     .lineStyle(StrokeStyle(lineWidth: 1.5))
             }

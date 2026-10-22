@@ -6,7 +6,6 @@ import Observation
 protocol RideDataSource: AnyObject {
     var power: Int? { get }
     var cadence: Double? { get }
-    var speedKmh: Double? { get }
     var currentHeartRate: Int? { get }
     func setTargetPower(_ watts: Int)
     func setGrade(_ percent: Double)
@@ -34,8 +33,14 @@ final class WorkoutEngine {
     let timeline: WorkoutTimeline?
 
     private(set) var state: State = .ready
-    /// Temps de séance, pauses exclues.
+    /// Temps réellement roulé, pauses exclues (c'est le temps de la séance enregistrée).
     private(set) var elapsed: TimeInterval = 0
+    /// Position dans le déroulé de la séance : avance avec le temps, et saute en avant
+    /// quand on passe un intervalle (sans compter ce temps comme roulé).
+    private(set) var position: TimeInterval = 0
+    /// Vitesse et distance virtuelles (vélo de route sur le plat).
+    private(set) var speedKmh = 0.0
+    private(set) var distance = 0.0
     private(set) var startDate: Date?
     private(set) var segmentIndex: Int?
     private(set) var targetWatts: Int?
@@ -52,7 +57,7 @@ final class WorkoutEngine {
     @ObservationIgnored private var lastSentTarget: Int?
     @ObservationIgnored private var lastSentAt: Date?
     @ObservationIgnored private var stoppedPedalingSince: Date?
-    @ObservationIgnored private var distance = 0.0
+    @ObservationIgnored private var bike: VirtualBike
     @ObservationIgnored private var recentPowers: [Int] = []
     @ObservationIgnored private var lapStart: (date: Date, elapsed: TimeInterval, sample: Int)?
     @ObservationIgnored private var countdownCuedFor: Int?
@@ -63,10 +68,11 @@ final class WorkoutEngine {
     /// Secondes sans pédaler avant la pause automatique.
     static let autoPauseDelay: TimeInterval = 3
 
-    init(workout: Workout?, ftp: Int, source: RideDataSource) {
+    init(workout: Workout?, ftp: Int, riderWeight: Double = 75, source: RideDataSource) {
         self.workout = workout
         self.ftp = ftp
         self.source = source
+        self.bike = VirtualBike(riderMass: riderWeight)
         self.timeline = workout.map { WorkoutTimeline(workout: $0, ftp: ftp) }
     }
 
@@ -79,11 +85,11 @@ final class WorkoutEngine {
         return tl.segments[i + 1]
     }
 
-    var segmentRemaining: TimeInterval? { currentSegment.map { $0.end - elapsed } }
+    var segmentRemaining: TimeInterval? { currentSegment.map { $0.end - position } }
 
-    var workoutRemaining: TimeInterval? { timeline.map { max($0.duration - elapsed, 0) } }
+    var workoutRemaining: TimeInterval? { timeline.map { max($0.duration - position, 0) } }
 
-    var isWorkoutComplete: Bool { timeline.map { elapsed >= $0.duration } ?? false }
+    var isWorkoutComplete: Bool { timeline.map { position >= $0.duration } ?? false }
 
     var isActive: Bool { state == .running || state == .paused || state == .autoPaused }
 
@@ -117,10 +123,10 @@ final class WorkoutEngine {
         }
     }
 
-    /// Passe directement à l'intervalle suivant.
+    /// Passe directement à l'intervalle suivant (le temps sauté n'est pas compté comme roulé).
     func skipSegment(now: Date = Date()) {
         guard let segment = currentSegment else { return }
-        elapsed = segment.end
+        position = segment.end
         tick(now: now, advanceClock: false)
     }
 
@@ -129,7 +135,7 @@ final class WorkoutEngine {
         updateTarget(now: now, force: true)
     }
 
-    /// Termine la séance et renvoie le dernier tour fermé.
+    /// Termine la séance (ferme le dernier tour).
     func finish(now: Date = Date()) {
         guard isActive else { return }
         timer?.invalidate()
@@ -155,14 +161,20 @@ final class WorkoutEngine {
         power3s = source.power == nil ? nil : recentPowers.reduce(0, +) / recentPowers.count
 
         updateAutoPause(now: now)
-        guard state == .running else { return }
+        guard state == .running else {
+            bike.stop()
+            speedKmh = 0
+            return
+        }
 
         elapsed += dt
-        let speed = (source.speedKmh ?? 0) / 3.6
-        distance += speed * dt
+        position += dt
+        bike.step(power: Double(power), dt: dt)
+        speedKmh = bike.speed * 3.6
+        distance += bike.speed * dt
 
         updateTarget(now: now, force: false)
-        if dt > 0 { recordSample(now: now, speed: speed) }
+        if dt > 0 { recordSample(now: now) }
     }
 
     private func updateAutoPause(now: Date) {
@@ -184,7 +196,7 @@ final class WorkoutEngine {
 
     private func updateTarget(now: Date, force: Bool) {
         guard let timeline else { return }
-        let index = timeline.segmentIndex(at: elapsed)
+        let index = timeline.segmentIndex(at: position)
         if index != segmentIndex {
             if segmentIndex != nil {
                 closeLap(now: now)
@@ -204,7 +216,7 @@ final class WorkoutEngine {
             onCue?(.countdown)
         }
 
-        guard let watts = timeline.targetWatts(at: elapsed) else { return }
+        guard let watts = timeline.targetWatts(at: position) else { return }
         let target = Int((watts * intensity).rounded())
         targetWatts = target
         // Envoi au trainer uniquement si la consigne change (au plus une fois par seconde).
@@ -216,13 +228,14 @@ final class WorkoutEngine {
         }
     }
 
-    private func recordSample(now: Date, speed: Double) {
+    private func recordSample(now: Date) {
         samples.append(Sample(timestamp: now,
                               elapsed: elapsed,
+                              position: timeline == nil ? nil : position,
                               power: source.power,
                               cadence: source.cadence.map { Int($0.rounded()) },
                               heartRate: source.currentHeartRate,
-                              speed: speed,
+                              speed: bike.speed,
                               distance: distance,
                               target: targetWatts))
     }

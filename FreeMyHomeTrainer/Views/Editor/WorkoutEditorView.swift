@@ -19,7 +19,7 @@ struct WorkoutEditorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header(timeline)
-                WorkoutProfileChart(timeline: timeline, highlightedRange: selectedRange, showAxes: false)
+                WorkoutProfileChart(timeline: timeline, highlightedRange: selectedRange, showAxes: false, showFTPLine: true)
                     .frame(height: 56)
                 palette
                 BlockTimeline(blocks: draft.blocks, ftp: ftp, selectedID: $selectedID,

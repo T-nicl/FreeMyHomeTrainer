@@ -19,6 +19,7 @@
 		5C80F252E2BF580A4342CD2B /* UploadCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FC6EA4601DAA49D08E8F024 /* UploadCenter.swift */; };
 		60DF425AFA23E894C641012F /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5803BDDFC842B3995984A861 /* RideView.swift */; };
 		6152E860AC19EC25C0FCDBDB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 53144CEFDCB0C40CA29E3A6A /* Assets.xcassets */; };
+		64687CD55F2963B035A3941A /* VirtualBike.swift in Sources */ = {isa = PBXBuildFile; fileRef = 731525CDD980AAC6226BEDBA /* VirtualBike.swift */; };
 		6765D16693567985D9C3C95D /* IntensityRating.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3722F2EE869D6B3C8F339894 /* IntensityRating.swift */; };
 		688B90E8F1362EA92D9C6B46 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8394D2A40CB6C42A11EEC6 /* SettingsView.swift */; };
 		7118FB545DB8125F6DD6549D /* DevicesPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE1FBDC32370741BBD0A752 /* DevicesPanel.swift */; };
@@ -65,6 +66,7 @@
 		644C7DDB4B9C2D789D3F8471 /* FITEncoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FITEncoder.swift; sourceTree = "<group>"; };
 		64D27D8B13E9D37C32DA2AD2 /* BlockEditBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockEditBar.swift; sourceTree = "<group>"; };
 		715497C84B8769B7204198F6 /* DeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceManager.swift; sourceTree = "<group>"; };
+		731525CDD980AAC6226BEDBA /* VirtualBike.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualBike.swift; sourceTree = "<group>"; };
 		762D255797D536FD6F0E4BDE /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		81FBACACD07BDF2F44512052 /* FreeMyHomeTrainerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FreeMyHomeTrainerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		91243D630AAA1070AD1E18FD /* FTMSParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FTMSParser.swift; sourceTree = "<group>"; };
@@ -222,6 +224,7 @@
 			isa = PBXGroup;
 			children = (
 				9B74FE814B76070EBE93518B /* ActivityMetrics.swift */,
+				731525CDD980AAC6226BEDBA /* VirtualBike.swift */,
 				4BEF7C745427FCA98BBF8B7D /* WorkoutEngine.swift */,
 			);
 			path = Engine;
@@ -389,6 +392,7 @@
 				688B90E8F1362EA92D9C6B46 /* SettingsView.swift in Sources */,
 				5B41FBC08B42349E01DB5D01 /* SimulatedTrainer.swift in Sources */,
 				5C80F252E2BF580A4342CD2B /* UploadCenter.swift in Sources */,
+				64687CD55F2963B035A3941A /* VirtualBike.swift in Sources */,
 				9B7C4CD82C22DA079EB9E301 /* Workout.swift in Sources */,
 				9F4D049B1256E88E6E810718 /* WorkoutBlockTree.swift in Sources */,
 				36F11621AA0357C40982410E /* WorkoutEditorView.swift in Sources */,

@@ -79,6 +79,33 @@ struct BlockTimeline: View {
         }
         .frame(height: Self.barHeight + 100)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(alignment: .bottomLeading) { ftpLine }
+    }
+
+    /// Distance entre le bas de la frise et le bas des barres :
+    /// marge (8) + marge des blocs (8) + libellés sous les barres (18 + 15 + 2 × 2).
+    private static let barBaseline: CGFloat = 8 + groupPadding + 37
+
+    /// Trait pointillé à la hauteur de la FTP, aligné sur l'échelle des barres.
+    @ViewBuilder private var ftpLine: some View {
+        if ftp > 0 {
+            let fraction = min(Double(ftp) / maxWatts, 1)
+            HStack(spacing: 6) {
+                Text("FTP \(ftp) W")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+                Rectangle()
+                    .fill(.clear)
+                    .frame(height: 1)
+                    .overlay(Line().stroke(.secondary, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 12)
+            .offset(y: -(Self.barBaseline + Self.barHeight * fraction) + 6)
+            .opacity(0.8)
+            .allowsHitTesting(false)
+        }
     }
 
     // MARK: - Échelles
@@ -257,26 +284,19 @@ private struct BlockBar: View {
                     .onEnded { _ in commit() })
     }
 
-    /// Applique le redimensionnement au bloc, en gardant l'unité (W ou % FTP) de chaque cible.
+    /// Applique le redimensionnement au bloc (cibles enregistrées en watts).
     private func commit() {
         var updated = block
         if let d = draftDuration { updated.duration = d }
         if let w = draftStart {
-            updated.target = Self.target(watts: w, like: block.target, ftp: ftp)
+            updated.target = .watts(Int(w.rounded()))
             if block.kind != .ramp { updated.endTarget = updated.target }
         }
-        if let w = draftEnd { updated.endTarget = Self.target(watts: w, like: block.endTarget, ftp: ftp) }
+        if let w = draftEnd { updated.endTarget = .watts(Int(w.rounded())) }
         draftDuration = nil
         draftStart = nil
         draftEnd = nil
         onUpdate(updated)
-    }
-
-    static func target(watts: Double, like original: Target, ftp: Int) -> Target {
-        if case .ftpPercent = original, ftp > 0 {
-            return .ftpPercent(Int((watts / Double(ftp) * 100).rounded()))
-        }
-        return .watts(Int(watts.rounded()))
     }
 
     private func zoneColor(_ watts: Double) -> Color { PowerZone(watts: watts, ftp: ftp).color }
@@ -291,6 +311,16 @@ private struct BlockBar: View {
 private struct HandleArea: View {
     var body: some View {
         Rectangle().fill(Color.clear).contentShape(Rectangle())
+    }
+}
+
+/// Ligne horizontale (pour le trait pointillé de la FTP).
+private struct Line: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { p in
+            p.move(to: CGPoint(x: rect.minX, y: rect.midY))
+            p.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        }
     }
 }
 

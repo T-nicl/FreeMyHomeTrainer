@@ -109,8 +109,8 @@ struct DurationField: View {
     }
 }
 
-/// Puissance toujours saisie et affichée en watts. La case « % FTP » mémorise la cible
-/// en pourcentage de la FTP : elle suivra alors la FTP si celle-ci change.
+/// Puissance saisie et affichée en watts, avec l'équivalent en % de FTP pour information.
+/// Modifier la valeur enregistre toujours la cible en watts.
 struct PowerField: View {
     @Binding var target: Target
     let ftp: Int
@@ -124,41 +124,23 @@ struct PowerField: View {
                 .frame(width: 58)
             Text("W")
             Stepper("", onIncrement: { step(+5) }, onDecrement: { step(-5) }).labelsHidden()
-            Circle().fill(PowerZone(watts: target.watts(ftp: ftp), ftp: ftp).color).frame(width: 9, height: 9)
-            Toggle(isOn: linkedBinding) {
-                Text("\(percent) % FTP").monospacedDigit()
+            Circle().fill(PowerZone(watts: watts, ftp: ftp).color).frame(width: 9, height: 9)
+            if ftp > 0 {
+                Text("≈ \(Int((watts / Double(ftp) * 100).rounded())) % FTP")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
-            .toggleStyle(.checkbox)
-            .help("Cocher pour que la cible suive ta FTP si elle change")
         }
     }
 
-    private var isLinked: Bool {
-        if case .ftpPercent = target { true } else { false }
-    }
-
-    private var percent: Int {
-        ftp > 0 ? Int((target.watts(ftp: ftp) / Double(ftp) * 100).rounded()) : 0
-    }
+    private var watts: Double { target.watts(ftp: ftp) }
 
     private var wattsBinding: Binding<Int> {
-        Binding(get: { Int(target.watts(ftp: ftp).rounded()) }, set: { setWatts($0) })
-    }
-
-    private var linkedBinding: Binding<Bool> {
-        Binding(get: { isLinked }, set: { linked in
-            let watts = Int(target.watts(ftp: ftp).rounded())
-            target = linked && ftp > 0 ? .ftpPercent(percent) : .watts(watts)
-        })
-    }
-
-    private func setWatts(_ watts: Int) {
-        let w = max(watts, 0)
-        target = isLinked && ftp > 0 ? .ftpPercent(Int((Double(w) / Double(ftp) * 100).rounded())) : .watts(w)
+        Binding(get: { Int(watts.rounded()) }, set: { target = .watts(max($0, 0)) })
     }
 
     private func step(_ delta: Int) {
-        setWatts(Int(target.watts(ftp: ftp).rounded()) + delta)
+        target = .watts(max(Int(watts.rounded()) + delta, 0))
     }
 }
 

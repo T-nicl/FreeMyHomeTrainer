@@ -182,7 +182,6 @@ struct FTMSParserTests {
 final class MockSource: RideDataSource {
     var power: Int? = 150
     var cadence: Double? = 90
-    var speedKmh: Double? = 36
     var currentHeartRate: Int? = 140
     var targets: [Int] = []
     var grades: [Double] = []
@@ -213,7 +212,8 @@ struct WorkoutEngineTests {
         #expect(engine.isWorkoutComplete)
         #expect(engine.laps.count == 2)
         #expect(engine.laps[0].timerTime == 60)
-        #expect(engine.samples.last?.distance == 1000)   // 10 m/s pendant 100 s
+        #expect(engine.distance > 700 && engine.distance < 1000)   // vélo virtuel à 150 W, départ arrêté
+        #expect(engine.speedKmh > 28 && engine.speedKmh < 34)
 
         engine.finish(now: t0.addingTimeInterval(101))
         #expect(engine.state == .finished)
@@ -260,9 +260,29 @@ struct WorkoutEngineTests {
         #expect(source.targets.last == 105)
         for i in 1...5 { engine.tick(now: t0.addingTimeInterval(TimeInterval(i))) }
         engine.skipSegment(now: t0.addingTimeInterval(6))
-        #expect(engine.elapsed == 60)
+        #expect(engine.position == 60)
+        #expect(engine.elapsed == 5)                // le temps sauté n'est pas compté comme roulé
         #expect(engine.targetWatts == 210)
         #expect(engine.laps.count == 1)
+    }
+}
+
+struct VirtualBikeTests {
+    @Test func roadBikeSpeedsOnTheFlat() {
+        let bike = VirtualBike(riderMass: 70)
+        let kmh = { (w: Double) in bike.steadySpeed(power: w) * 3.6 }
+        #expect(kmh(100) > 26 && kmh(100) < 29)
+        #expect(kmh(200) > 33.5 && kmh(200) < 36.5)
+        #expect(kmh(300) > 38.5 && kmh(300) < 42)
+        #expect(kmh(0) < 0.1)
+    }
+
+    @Test func accelerationReachesSteadySpeed() {
+        var bike = VirtualBike(riderMass: 70)
+        for _ in 0..<120 { bike.step(power: 200, dt: 1) }
+        #expect(abs(bike.speed - bike.steadySpeed(power: 200)) < 0.1)
+        bike.step(power: 0, dt: 10)                 // roue libre : ralentit sans s'arrêter net
+        #expect(bike.speed < bike.steadySpeed(power: 200) && bike.speed > 5)
     }
 }
 
@@ -400,7 +420,6 @@ struct OAuth1Tests {
         let html = #"<script>var response_url = "https:\/\/sso.garmin.com\/sso\/embed?ticket=ST-987-xyz-cas";</script>"#
         #expect(GarminClient.ticket(in: html) == "ST-987-xyz-cas")
         #expect(GarminClient.ticket(in: "<title>GARMIN Authentication</title>") == nil)
-        #expect(GarminClient.loginURL.absoluteString.hasPrefix("https://sso.garmin.com/sso/signin?"))
     }
 
     @Test func formEncodingRoundTrip() {

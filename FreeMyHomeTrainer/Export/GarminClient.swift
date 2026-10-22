@@ -4,8 +4,7 @@ import Foundation
 /// Envoi vers Garmin Connect — NON OFFICIEL.
 /// Garmin ne propose pas d'API publique aux particuliers : on reproduit la connexion SSO
 /// de l'app mobile Garmin Connect (même méthode que la librairie open source « garth »).
-/// La connexion se fait sur la page Garmin elle-même (GarminLoginSheet) : l'app ne voit
-/// jamais le mot de passe et ne garde que les jetons, dans le Trousseau.
+/// Le mot de passe sert uniquement à la connexion : seuls les jetons sont gardés, dans le Trousseau.
 /// Ce module peut cesser de fonctionner si Garmin modifie sa connexion.
 @MainActor
 final class GarminClient {
@@ -26,10 +25,12 @@ final class GarminClient {
     }
 
     enum GarminError: LocalizedError {
-        case unexpectedResponse(String), notConnected
+        case unexpectedResponse(String), notConnected, invalidCredentials, wrongCode
 
         var errorDescription: String? {
             switch self {
+            case .invalidCredentials: "E-mail ou mot de passe Garmin incorrect."
+            case .wrongCode: "Code de vérification incorrect."
             case .unexpectedResponse(let p): "Réponse inattendue de Garmin (\(p)). La connexion Garmin a peut-être changé."
             case .notConnected: "Compte Garmin non connecté."
             }
@@ -47,6 +48,8 @@ final class GarminClient {
         config.httpAdditionalHeaders = ["User-Agent": GarminClient.userAgent]
         return URLSession(configuration: config)
     }()
+    private var ssoSession = GarminClient.makeSSOSession()
+    private var pendingMFA: (csrf: String, referer: URL)?
     private var consumer: Consumer?
 
     private var oauth1: OAuth1Token? {
@@ -66,27 +69,117 @@ final class GarminClient {
         oauth2 = nil
     }
 
-    /// Page de connexion Garmin (widget SSO). Une fois connecté, Garmin redirige vers
-    /// `…/sso/embed?ticket=ST-…` : ce ticket est échangé contre les jetons.
-    nonisolated static var loginURL: URL {
-        let params = [
-            "id": "gauth-widget",
-            "embedWidget": "true",
-            "gauthHost": "\(sso)/embed",
-            "service": "\(sso)/embed",
-            "source": "\(sso)/embed",
-            "redirectAfterAccountLoginUrl": "\(sso)/embed",
-            "redirectAfterAccountCreationUrl": "\(sso)/embed",
-        ]
-        return URL(string: "\(sso)/signin?\(FormEncoding.encode(params))")!
-    }
-
     /// Extrait le ticket SSO d'une URL de redirection ou d'une page HTML.
     nonisolated static func ticket(in text: String) -> String? {
         guard let regex = try? NSRegularExpression(pattern: #"ticket=(ST-[A-Za-z0-9\-._]+)"#),
               let m = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let r = Range(m.range(at: 1), in: text) else { return nil }
         return String(text[r])
+    }
+
+    // MARK: - Connexion (e-mail + mot de passe, code de vérification éventuel)
+
+    enum LoginResult { case connected, needsMFACode }
+
+    private static var embedParams: [String: String] {
+        ["id": "gauth-widget", "embedWidget": "true", "gauthHost": sso]
+    }
+
+    private static var signinParams: [String: String] {
+        embedParams.merging([
+            "gauthHost": "\(sso)/embed",
+            "service": "\(sso)/embed",
+            "source": "\(sso)/embed",
+            "redirectAfterAccountLoginUrl": "\(sso)/embed",
+            "redirectAfterAccountCreationUrl": "\(sso)/embed",
+        ]) { $1 }
+    }
+
+    private static func url(_ path: String, _ params: [String: String]) -> URL {
+        URL(string: "\(path)?\(FormEncoding.encode(params))")!
+    }
+
+    /// Se connecte avec l'e-mail et le mot de passe Garmin. Le mot de passe sert uniquement
+    /// à cette requête : il n'est jamais stocké, seuls les jetons obtenus le sont.
+    func login(email: String, password: String) async throws -> LoginResult {
+        ssoSession = Self.makeSSOSession()
+        pendingMFA = nil
+        let embedURL = Self.url("\(Self.sso)/embed", Self.embedParams)
+        _ = try await get(embedURL)                                   // cookies SSO
+        let signinURL = Self.url("\(Self.sso)/signin", Self.signinParams)
+        let page = try await get(signinURL, referer: embedURL)
+        let html = try await postForm(signinURL, referer: signinURL, form: [
+            "username": email, "password": password, "embed": "true", "_csrf": try csrfToken(in: page),
+        ])
+        return try await handleSigninResult(html, referer: signinURL)
+    }
+
+    /// Envoie le code de vérification reçu par e-mail ou SMS (double authentification).
+    func submitMFA(code: String) async throws {
+        guard let pending = pendingMFA else { throw GarminError.unexpectedResponse("aucun code attendu") }
+        let html = try await postForm(Self.url("\(Self.sso)/verifyMFA/loginEnterMfaCode", Self.signinParams),
+                                      referer: pending.referer,
+                                      form: ["mfa-code": code, "embed": "true", "_csrf": pending.csrf,
+                                             "fromPage": "setupEnterMfaCode"])
+        pendingMFA = nil
+        if try await handleSigninResult(html, referer: pending.referer) == .needsMFACode {
+            throw GarminError.wrongCode
+        }
+    }
+
+    private func handleSigninResult(_ html: String, referer: URL) async throws -> LoginResult {
+        let title = Self.firstMatch(#"<title>(.+?)</title>"#, in: html) ?? "?"
+        if title.contains("MFA") {
+            pendingMFA = (try csrfToken(in: html), referer)
+            return .needsMFACode
+        }
+        guard title == "Success", let ticket = Self.ticket(in: html) else {
+            throw title.uppercased().contains("GARMIN") ? GarminError.invalidCredentials
+                                                       : GarminError.unexpectedResponse(title)
+        }
+        try await connect(ticket: ticket)
+        return .connected
+    }
+
+    private func csrfToken(in html: String) throws -> String {
+        guard let token = Self.firstMatch(#"name="_csrf"\s+value="(.+?)""#, in: html) else {
+            throw GarminError.unexpectedResponse("jeton CSRF absent")
+        }
+        return token
+    }
+
+    private static func firstMatch(_ pattern: String, in text: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]),
+              let m = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              m.numberOfRanges > 1, let r = Range(m.range(at: 1), in: text) else { return nil }
+        return String(text[r])
+    }
+
+    private static func makeSSOSession() -> URLSession {
+        let config = URLSessionConfiguration.ephemeral
+        config.httpCookieStorage = HTTPCookieStorage()
+        config.httpCookieAcceptPolicy = .always
+        config.httpAdditionalHeaders = ["User-Agent": userAgent]
+        return URLSession(configuration: config)
+    }
+
+    private func get(_ url: URL, referer: URL? = nil) async throws -> String {
+        var request = URLRequest(url: url)
+        if let referer { request.setValue(referer.absoluteString, forHTTPHeaderField: "Referer") }
+        let (data, response) = try await ssoSession.data(for: request)
+        try HTTPError.check(response, data)
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    private func postForm(_ url: URL, referer: URL, form: [String: String]) async throws -> String {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.setValue(referer.absoluteString, forHTTPHeaderField: "Referer")
+        request.httpBody = Data(FormEncoding.encode(form).utf8)
+        let (data, response) = try await ssoSession.data(for: request)
+        try HTTPError.check(response, data)
+        return String(decoding: data, as: UTF8.self)
     }
 
     // MARK: - Jetons OAuth

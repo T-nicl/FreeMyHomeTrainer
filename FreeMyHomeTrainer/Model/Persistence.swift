@@ -29,12 +29,14 @@ final class SavedWorkout {
 /// Un échantillon enregistré à 1 Hz.
 struct Sample: Codable, Hashable, Sendable {
     var timestamp: Date
-    /// Temps de séance (hors pauses), en secondes.
+    /// Temps réellement roulé (hors pauses), en secondes.
     var elapsed: TimeInterval
+    /// Position dans le déroulé de la séance (différente d'`elapsed` après un intervalle sauté).
+    var position: TimeInterval? = nil
     var power: Int?
     var cadence: Int?
     var heartRate: Int?
-    /// Vitesse en m/s.
+    /// Vitesse virtuelle en m/s.
     var speed: Double?
     /// Distance cumulée en mètres.
     var distance: Double

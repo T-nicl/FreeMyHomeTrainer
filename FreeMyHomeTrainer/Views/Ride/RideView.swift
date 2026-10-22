@@ -9,6 +9,7 @@ struct RideView: View {
     @Environment(UploadCenter.self) private var uploads
     @Environment(\.modelContext) private var context
     @AppStorage(Settings.ftpKey) private var ftp = 200
+    @AppStorage(Settings.weightKey) private var weight = 70.0
     @State private var finishedActivity: ActivityRecord?
     @State private var saveError: String?
 
@@ -30,7 +31,7 @@ struct RideView: View {
     }
 
     private func start(_ workout: Workout?) {
-        let engine = WorkoutEngine(workout: workout, ftp: ftp, source: devices)
+        let engine = WorkoutEngine(workout: workout, ftp: ftp, riderWeight: weight, source: devices)
         engine.onCue = { cue in
             NSSound(named: cue == .countdown ? "Tink" : "Glass")?.play()
         }
@@ -204,8 +205,9 @@ private struct LiveRideView: View {
             MetricTile(title: "Cadence", value: devices.cadence.map { String(Int($0.rounded())) } ?? "--", unit: "rpm")
             MetricTile(title: "Cardio", value: devices.currentHeartRate.map(String.init) ?? "--", unit: "bpm",
                        accent: devices.currentHeartRate == nil ? nil : .red)
-            MetricTile(title: "Temps", value: Format.clock(engine.elapsed), unit: "",
-                       caption: String(format: "%.1f km", (engine.samples.last?.distance ?? 0) / 1000))
+            MetricTile(title: "Vitesse", value: String(format: "%.1f", engine.speedKmh), unit: "km/h",
+                       caption: String(format: "%.2f km", engine.distance / 1000))
+            MetricTile(title: "Temps", value: Format.clock(engine.elapsed), unit: "")
         }
     }
 
@@ -242,7 +244,7 @@ private struct LiveRideView: View {
     @ViewBuilder private var chart: some View {
         let shown = downsampled(engine.samples)
         if let timeline = engine.timeline {
-            WorkoutProfileChart(timeline: timeline, actual: shown, progress: engine.elapsed)
+            WorkoutProfileChart(timeline: timeline, actual: shown, progress: engine.position)
                 .frame(minHeight: 180)
         } else {
             FreeRideChart(samples: shown).frame(minHeight: 180)

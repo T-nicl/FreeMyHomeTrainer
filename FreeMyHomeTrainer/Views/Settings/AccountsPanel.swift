@@ -1,5 +1,4 @@
 import SwiftUI
-import WebKit
 
 /// Bouton « Connecter Garmin » : une seule connexion suffit, seuls les jetons sont conservés
 /// (dans le Trousseau), jamais le mot de passe. Strava est alimenté par Garmin Connect.
@@ -10,11 +9,9 @@ struct AccountsPanel: View {
     @Environment(UploadCenter.self) private var uploads
     @AppStorage(Settings.garminAutoUploadKey) private var garminAuto = true
 
-    @State private var busy = false
     @State private var showLogin = false
-    @State private var error: String?
 
-    private static let garminBlue = Color(red: 0.0, green: 0.47, blue: 0.75)
+    static let garminBlue = Color(red: 0.0, green: 0.47, blue: 0.75)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -35,9 +32,7 @@ struct AccountsPanel: View {
                 }
                 .lineLimit(1)
                 Spacer(minLength: 8)
-                if busy {
-                    ProgressView().controlSize(.small)
-                } else if uploads.garminConnected {
+                if uploads.garminConnected {
                     Button("Déconnecter") {
                         uploads.garmin.disconnect()
                         uploads.refreshAccounts()
@@ -72,104 +67,108 @@ struct AccountsPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if let error {
-                Text(error).font(.callout).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
-            }
         }
-        .sheet(isPresented: $showLogin) {
-            GarminLoginSheet { ticket in
-                showLogin = false
-                Task { await connect(ticket: ticket) }
-            }
-        }
-    }
-
-    private func connect(ticket: String) async {
-        busy = true
-        error = nil
-        defer { busy = false }
-        do {
-            try await uploads.garmin.connect(ticket: ticket)
-            uploads.refreshAccounts()
-        } catch {
-            self.error = "Garmin : \(error.localizedDescription)"
-        }
+        .sheet(isPresented: $showLogin) { GarminLoginSheet() }
     }
 }
 
 // MARK: - Connexion Garmin
 
-/// Affiche la page de connexion officielle de Garmin et récupère le ticket SSO.
+/// Fenêtre de connexion Garmin : e-mail + mot de passe, puis code de vérification si
+/// la double authentification est activée sur le compte.
 struct GarminLoginSheet: View {
-    let onTicket: (String) -> Void
+    @Environment(UploadCenter.self) private var uploads
     @Environment(\.dismiss) private var dismiss
 
+    @State private var email = ""
+    @State private var password = ""
+    @State private var code = ""
+    @State private var needsCode = false
+    @State private var busy = false
+    @State private var error: String?
+
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 18) {
+            Image(systemName: "applewatch")
+                .font(.system(size: 28))
+                .foregroundStyle(.white)
+                .frame(width: 56, height: 56)
+                .background(AccountsPanel.garminBlue, in: RoundedRectangle(cornerRadius: 14))
+
+            VStack(spacing: 6) {
+                Text("Connexion à Garmin Connect").font(.title2.weight(.bold))
+                Text(needsCode ? "Saisis le code de vérification envoyé par Garmin."
+                               : "Ton mot de passe sert uniquement à te connecter : il n'est pas enregistré.")
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(spacing: 10) {
+                if needsCode {
+                    TextField("", text: $code, prompt: Text("Code à 6 chiffres"))
+                        .textContentType(.oneTimeCode)
+                } else {
+                    TextField("", text: $email, prompt: Text("E-mail"))
+                        .textContentType(.username)
+                    SecureField("", text: $password, prompt: Text("Mot de passe"))
+                        .textContentType(.password)
+                }
+            }
+            .labelsHidden()
+            .textFieldStyle(.roundedBorder)
+            .controlSize(.large)
+            .disabled(busy)
+
+            if let error {
+                Text(error)
+                    .font(.callout)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             HStack {
-                Text("Connexion à Garmin Connect").font(.headline)
+                Button("Annuler", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
                 Spacer()
-                Button("Annuler") { dismiss() }
+                if busy { ProgressView().controlSize(.small) }
+                Button(needsCode ? "Valider" : "Se connecter") { Task { await submit() } }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AccountsPanel.garminBlue)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(busy || (needsCode ? code.isEmpty : email.isEmpty || password.isEmpty))
             }
-            .padding(12)
-            Divider()
-            GarminWebView(onTicket: onTicket)
-            Divider()
-            Text("Tu te connectes sur la page de Garmin : l'app ne voit pas ton mot de passe et ne garde qu'un jeton. Envoi non officiel, qui peut cesser de fonctionner si Garmin change sa connexion.")
+            .controlSize(.large)
+
+            Text("Envoi non officiel : il peut cesser de fonctionner si Garmin change sa connexion.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(10)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
         }
-        .frame(width: 520, height: 680)
-    }
-}
-
-private struct GarminWebView: NSViewRepresentable {
-    let onTicket: (String) -> Void
-
-    func makeCoordinator() -> Coordinator { Coordinator(onTicket: onTicket) }
-
-    func makeNSView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        config.websiteDataStore = .nonPersistent()   // aucun cookie conservé
-        let view = WKWebView(frame: .zero, configuration: config)
-        view.navigationDelegate = context.coordinator
-        view.load(URLRequest(url: GarminClient.loginURL))
-        return view
+        .padding(28)
+        .frame(width: 380)
     }
 
-    func updateNSView(_ nsView: WKWebView, context: Context) {}
-
-    @MainActor
-    final class Coordinator: NSObject, WKNavigationDelegate {
-        private let onTicket: (String) -> Void
-        private var delivered = false
-
-        init(onTicket: @escaping (String) -> Void) { self.onTicket = onTicket }
-
-        private func deliver(_ ticket: String) {
-            guard !delivered else { return }
-            delivered = true
-            onTicket(ticket)
-        }
-
-        // La page de succès redirige vers …/sso/embed?ticket=ST-… : on l'intercepte.
-        func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
-            if let url = action.request.url?.absoluteString, url.contains("/sso/embed"),
-               let ticket = GarminClient.ticket(in: url) {
-                deliver(ticket)
-                return .cancel
+    private func submit() async {
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            if needsCode {
+                try await uploads.garmin.submitMFA(code: code.trimmingCharacters(in: .whitespaces))
+            } else if try await uploads.garmin.login(email: email.trimmingCharacters(in: .whitespaces),
+                                                     password: password) == .needsMFACode {
+                password = ""
+                needsCode = true
+                return
             }
-            return .allow
-        }
-
-        // Filet de sécurité : le ticket peut aussi figurer dans le HTML de la page « Success ».
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            webView.evaluateJavaScript("document.documentElement.outerHTML") { [weak self] result, _ in
-                guard let html = result as? String, let ticket = GarminClient.ticket(in: html) else { return }
-                MainActor.assumeIsolated { self?.deliver(ticket) }
-            }
+            password = ""
+            uploads.refreshAccounts()
+            dismiss()
+        } catch {
+            if needsCode { needsCode = false; code = "" }
+            self.error = error.localizedDescription
         }
     }
 }
