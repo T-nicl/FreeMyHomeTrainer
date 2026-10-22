@@ -227,11 +227,13 @@ private struct BlockBar: View {
         height - height * CGFloat(min(max(watts / maxWatts, 0.04), 1))
     }
 
+    // Les gestes sont mesurés dans le repère de la fenêtre : la poignée se déplace avec
+    // le bloc pendant le redimensionnement, ce qui ferait trembler une mesure locale.
     private var durationHandle: some View {
-        HandleArea(vertical: true, visible: isSelected || draftDuration != nil)
+        HandleArea()
             .pointerStyle(.frameResize(position: .trailing))
             .highPriorityGesture(
-                DragGesture(minimumDistance: 1)
+                DragGesture(minimumDistance: 1, coordinateSpace: .global)
                     .onChanged { value in
                         guard scale > 0 else { return }
                         let raw = block.duration + value.translation.width / scale
@@ -241,10 +243,10 @@ private struct BlockBar: View {
     }
 
     private func powerHandle(isEnd: Bool) -> some View {
-        HandleArea(vertical: false, visible: isSelected || isResizing)
+        HandleArea()
             .pointerStyle(.frameResize(position: .top))
             .highPriorityGesture(
-                DragGesture(minimumDistance: 1)
+                DragGesture(minimumDistance: 1, coordinateSpace: .global)
                     .onChanged { value in
                         let base = isEnd ? (block.kind == .ramp ? block.endTarget.watts(ftp: ftp) : 0)
                                          : block.target.watts(ftp: ftp)
@@ -285,22 +287,10 @@ private struct BlockBar: View {
     }
 }
 
-/// Zone de prise d'un bord, avec une petite poignée visible quand le bloc est sélectionné.
+/// Zone de prise invisible sur un bord du bloc.
 private struct HandleArea: View {
-    let vertical: Bool
-    let visible: Bool
-
     var body: some View {
-        Rectangle()
-            .fill(Color.clear)
-            .contentShape(Rectangle())
-            .overlay {
-                if visible {
-                    Capsule()
-                        .fill(Color.primary.opacity(0.75))
-                        .frame(width: vertical ? 4 : 26, height: vertical ? 26 : 4)
-                }
-            }
+        Rectangle().fill(Color.clear).contentShape(Rectangle())
     }
 }
 
