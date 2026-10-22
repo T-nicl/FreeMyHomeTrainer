@@ -68,15 +68,11 @@ struct WorkoutEditorView: View {
     /// Blocs à ajouter : clic = ajout après la sélection, ou glisser dans la frise.
     private var palette: some View {
         HStack(spacing: 8) {
+            Text("Ajouter :").foregroundStyle(.secondary)
             PaletteItem(title: "Constant", icon: "rectangle.fill", kind: .steady) { add(newBlock(.steady)) }
             PaletteItem(title: "Rampe", icon: "chart.line.uptrend.xyaxis", kind: .ramp) { add(newBlock(.ramp)) }
             PaletteItem(title: "Répétition", icon: "repeat", kind: .repeats) { add(newBlock(.repeats)) }
-            Spacer(minLength: 8)
-            Text("Glisse les blocs pour les déplacer")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
         }
     }
 

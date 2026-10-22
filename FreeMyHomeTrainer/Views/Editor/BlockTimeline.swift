@@ -52,7 +52,6 @@ struct BlockTimeline: View {
     static let barHeight: CGFloat = 150
     static let minBarWidth: CGFloat = 54
     private static let groupPadding: CGFloat = 8
-    private static let endZoneWidth: CGFloat = 64
 
     var body: some View {
         GeometryReader { geo in
@@ -67,8 +66,10 @@ struct BlockTimeline: View {
                                 .padding(.bottom, Self.groupPadding)
                         }
                     }
-                    EndDropZone(isEmpty: blocks.isEmpty, onDrop: onDrop)
-                        .padding(.bottom, Self.groupPadding)
+                    if blocks.isEmpty {
+                        EmptyDropZone(onDrop: onDrop)
+                            .padding(.bottom, Self.groupPadding)
+                    }
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -114,7 +115,7 @@ struct BlockTimeline: View {
         let total = blocks.reduce(0) { $0 + $1.displayDuration }
         guard total > 0 else { return 0 }
         let groups = CGFloat(blocks.filter { $0.kind == .repeats }.count)
-        let overhead = 24 + Self.endZoneWidth + CGFloat(blocks.count) * 4 + groups * (Self.groupPadding * 2 + 8)
+        let overhead = 24 + CGFloat(blocks.count) * 4 + groups * (Self.groupPadding * 2 + 8)
         return max((width - overhead) / total, 0)
     }
 
@@ -198,9 +199,6 @@ private struct BlockBar: View {
             }
             .frame(width: width, height: height)
             .overlay(alignment: .topLeading) { resizeHandles }
-            .overlay(alignment: hover == .after ? .trailing : .leading) {
-                if hover == .before || hover == .after { InsertionMarker() }
-            }
 
             // Hauteurs fixes : un libellé rétréci ne doit pas décaler la barre verticalement.
             Text(Format.duration(duration))
@@ -350,12 +348,6 @@ struct RampShape: Shape {
     }
 }
 
-private struct InsertionMarker: View {
-    var body: some View {
-        Capsule().fill(Color.accentColor).frame(width: 4).padding(.vertical, -4)
-    }
-}
-
 // MARK: - Groupe de répétition
 
 private struct RepeatGroup<Content: View>: View {
@@ -386,9 +378,6 @@ private struct RepeatGroup<Content: View>: View {
         .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.06)))
         .overlay(RoundedRectangle(cornerRadius: 10)
             .strokeBorder(borderColor, style: StrokeStyle(lineWidth: 2, dash: hover == .inside ? [] : [5, 4])))
-        .overlay(alignment: hover == .after ? .trailing : .leading) {
-            if hover == .before || hover == .after { InsertionMarker() }
-        }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .contentShape(Rectangle())
         .onTapGesture(perform: onSelect)
@@ -407,10 +396,10 @@ private struct RepeatGroup<Content: View>: View {
     }
 }
 
-// MARK: - Zone de fin
+// MARK: - Séance vide
 
-private struct EndDropZone: View {
-    let isEmpty: Bool
+/// Zone de dépôt affichée seulement quand la séance ne contient encore aucun bloc.
+private struct EmptyDropZone: View {
     let onDrop: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
     @State private var hover: HoverSide?
 
@@ -419,16 +408,12 @@ private struct EndDropZone: View {
             .strokeBorder(hover != nil ? Color.accentColor : .secondary.opacity(0.4),
                           style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
             .overlay {
-                VStack(spacing: 4) {
-                    Image(systemName: "plus").font(.title2)
-                    if isEmpty { Text("Glisse un bloc ici").font(.caption) }
-                }
-                .foregroundStyle(.secondary)
+                Text("Ajoute un premier bloc").font(.callout).foregroundStyle(.secondary)
             }
-            .frame(width: isEmpty ? 200 : 54, height: BlockTimeline.barHeight)
+            .frame(width: 220, height: BlockTimeline.barHeight)
             .padding(.bottom, 38)
             .onDrop(of: [.plainText], delegate: SideDropDelegate(
-                width: 54, hover: $hover, target: { _ in .end }, perform: onDrop))
+                width: 220, hover: $hover, target: { _ in .end }, perform: onDrop))
     }
 }
 
