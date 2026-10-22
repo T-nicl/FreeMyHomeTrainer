@@ -147,6 +147,7 @@ struct BlockTimeline: View {
         BlockBar(block: block, ftp: ftp, maxWatts: maxWatts, scale: scale,
                  isSelected: selectedID == block.id,
                  hover: hoverBinding(for: block.id),
+                 clearHover: { dropHover = nil },
                  onSelect: { selectedID = block.id },
                  onUpdate: { updated in
                      selectedID = updated.id
@@ -158,6 +159,7 @@ struct BlockTimeline: View {
     private func repeatGroup(_ block: WorkoutBlock, scale: CGFloat) -> some View {
         RepeatGroup(block: block, isSelected: selectedID == block.id,
                     hover: hoverBinding(for: block.id),
+                    clearHover: { dropHover = nil },
                     onSelect: { selectedID = block.id },
                     onChangeCount: { onChangeCount(block.id, $0) },
                     onDrop: onDrop) {
@@ -186,6 +188,7 @@ private struct BlockBar: View {
     let scale: CGFloat
     let isSelected: Bool
     @Binding var hover: HoverSide?
+    let clearHover: () -> Void
     let onSelect: () -> Void
     let onUpdate: (WorkoutBlock) -> Void
     let onDrop: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
@@ -239,7 +242,7 @@ private struct BlockBar: View {
         .onDrop(of: [.plainText], delegate: SideDropDelegate(
             width: width, hover: $hover,
             target: { side in .relative(block.id, after: side == .after) },
-            perform: onDrop))
+            perform: onDrop, onFinish: clearHover))
         .help("Clique pour modifier · glisse pour déplacer · tire le bord droit (durée) ou le haut (puissance)")
     }
 
@@ -385,6 +388,7 @@ private struct RepeatGroup<Content: View>: View {
     let block: WorkoutBlock
     let isSelected: Bool
     @Binding var hover: HoverSide?
+    let clearHover: () -> Void
     let onSelect: () -> Void
     let onChangeCount: (Int) -> Void
     let onDrop: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
@@ -421,7 +425,7 @@ private struct RepeatGroup<Content: View>: View {
             target: { side in
                 side == .inside ? .intoRepeat(block.id) : .relative(block.id, after: side == .after)
             },
-            perform: onDrop))
+            perform: onDrop, onFinish: clearHover))
     }
 
     private var borderColor: Color {
@@ -461,6 +465,9 @@ private struct SideDropDelegate: DropDelegate {
     var edge: CGFloat = 0
     let target: (HoverSide) -> BlockDropTarget
     let perform: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
+    /// Appelé à la fin d'un dépôt : efface tous les repères de la frise, pas seulement le sien
+    /// (dans une répétition, le bloc et la répétition sont deux zones superposées).
+    var onFinish: () -> Void = {}
 
     private func side(_ info: DropInfo) -> HoverSide {
         let x = info.location.x
@@ -482,6 +489,7 @@ private struct SideDropDelegate: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         let destination = target(side(info))
         hover = nil
+        onFinish()
         guard let provider = info.itemProviders(for: [.plainText]).first else { return false }
         let perform = self.perform
         _ = provider.loadObject(ofClass: NSString.self) { object, _ in
