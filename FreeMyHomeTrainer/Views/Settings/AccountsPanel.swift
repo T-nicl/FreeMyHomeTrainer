@@ -7,7 +7,7 @@ struct AccountsPanel: View {
     var compact = false
 
     @Environment(UploadCenter.self) private var uploads
-    @AppStorage(Settings.garminAutoUploadKey) private var garminAuto = true
+    @AppStorage(Settings.garminAutoUploadKey) private var garminAuto = false
 
     @State private var showLogin = false
 
@@ -62,7 +62,8 @@ struct AccountsPanel: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
             } else if uploads.garminConnected {
-                Text("Envoi automatique vers Garmin, puis Strava via Garmin Connect.")
+                Text(garminAuto ? "Envoi automatique vers Garmin, puis Strava via Garmin Connect."
+                                : "Envoi manuel : bouton « Envoyer sur Garmin » dans l'historique.")
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

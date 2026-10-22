@@ -20,7 +20,7 @@ final class UploadCenter {
 
     /// Envoi automatique après une sortie, selon les réglages.
     func uploadAfterRide(_ record: ActivityRecord, context: ModelContext) {
-        let auto = UserDefaults.standard.object(forKey: Settings.garminAutoUploadKey) as? Bool ?? true
+        let auto = UserDefaults.standard.bool(forKey: Settings.garminAutoUploadKey)   // désactivé par défaut
         guard garminConnected, auto else { return }
         record.garminStatus = .pending
         Task { await uploadToGarmin(record, context: context) }

@@ -8,6 +8,8 @@ final class MiniOverlay {
     static let shared = MiniOverlay()
 
     private var panel: NSPanel?
+    /// Fenêtre principale rangée dans le Dock, à restaurer en sortant du mode mini.
+    private weak var restoreWindow: NSWindow?
     private static let size = CGSize(width: 280, height: 132)
     private static let margin: CGFloat = 16
 
@@ -29,7 +31,7 @@ final class MiniOverlay {
         panel.hasShadow = true
 
         let root = MiniOverlayView(engine: engine, devices: devices, onExpand: { [weak self] in self?.expand() })
-        let hosting = NSHostingView(rootView: root)
+        let hosting = FirstClickHostingView(rootView: root)
         hosting.frame = NSRect(origin: .zero, size: Self.size)
         panel.contentView = hosting
 
@@ -43,17 +45,23 @@ final class MiniOverlay {
         self.panel = panel
 
         // La fenêtre principale se range dans le Dock pour libérer l'écran.
-        mainWindow?.miniaturize(nil)
+        restoreWindow = mainWindow
+        restoreWindow?.miniaturize(nil)
     }
 
     /// Ferme la mini-fenêtre et ramène l'app au premier plan.
     func expand() {
         close()
-        if let window = mainWindow {
-            window.deminiaturize(nil)
-            window.makeKeyAndOrderFront(nil)
-        }
+        let window = restoreWindow ?? mainWindow
+        restoreWindow = nil
+        window?.deminiaturize(nil)
+        window?.makeKeyAndOrderFront(nil)
+        // Depuis macOS 14, une app en arrière-plan ne peut pas s'activer seule quand une autre
+        // (le navigateur) est au premier plan : on passe par le système, comme un clic dans le Dock.
         NSApp.activate()
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration)
     }
 
     func close() {
@@ -62,8 +70,13 @@ final class MiniOverlay {
     }
 
     private var mainWindow: NSWindow? {
-        NSApp.windows.first { !($0 is NSPanel) && $0.canBecomeMain }
+        NSApp.windows.first { !($0 is NSPanel) && $0.styleMask.contains(.titled) }
     }
+}
+
+/// Le premier clic sur la mini-fenêtre (inactive) déclenche directement le bouton.
+private final class FirstClickHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
 /// Panneau qui accepte les clics sans devenir la fenêtre active.

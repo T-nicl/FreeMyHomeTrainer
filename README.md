@@ -15,7 +15,8 @@ Garmin Connect, qui la transmet à Strava.
 - **Pendant la séance** : grands chiffres, profil avec la puissance réelle, bips aux changements
   d'intervalle, pause automatique, intensité ±5 % (↑ / ↓), passer un intervalle.
 - **Historique** avec courbes et intervalles, export `.fit`.
-- **Envoi automatique** sur Garmin Connect, puis Strava via la synchronisation Garmin → Strava.
+- **Envoi** sur Garmin Connect (manuel, ou automatique en option), puis Strava via la
+  synchronisation Garmin → Strava.
 - **Trainer simulé** pour essayer l'app sans vélo.
 
 ## Installation (depuis le code)
@@ -38,7 +39,8 @@ sur GitHub) pour signer avec ton compte Apple (`CODE_SIGN_IDENTITY`, `DEVELOPMEN
 
 Dans l'app : **Réglages › Comptes › Connecter Garmin**. La page de connexion officielle de Garmin
 s'ouvre ; l'app ne voit jamais le mot de passe et ne garde qu'un jeton, dans le Trousseau macOS.
-Chaque sortie est ensuite envoyée automatiquement sur Garmin Connect.
+Chaque sortie peut alors être envoyée sur Garmin Connect depuis l'historique (« Envoyer sur
+Garmin »), ou automatiquement après la séance si tu actives l'option dans les Réglages.
 
 **Pour Strava** : dans Garmin Connect, active une fois *Paramètres › Applications connectées ›
 Strava*. Garmin transmet alors tes sorties à Strava automatiquement.
