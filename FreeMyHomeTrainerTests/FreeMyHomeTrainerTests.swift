@@ -115,6 +115,31 @@ struct WorkoutModelTests {
         #expect(blocks.last?.id == b.id)
     }
 
+    @Test func nestedRepeats() throws {
+        // 2 × (8 × (1' à 300 W, 1' à 150 W)) avec 5' de récupération entre les deux séries.
+        let inner = WorkoutBlock.repeats(8, [.steady(60, .watts(300)), .steady(60, .watts(150))])
+        let w = Workout(name: "2x8x1'", blocks: [.repeats(2, [inner, .steady(300, .watts(120))])])
+        let tl = WorkoutTimeline(workout: w, ftp: 250)
+        #expect(tl.segments.count == 2 * (16 + 1))
+        #expect(tl.duration == 2 * (16 * 60 + 300))
+        #expect(tl.targetWatts(at: 60 * 16 + 300 + 30) == 300)     // 1re minute de la 2e série
+
+        let decoded = try Workout.from(json: w.jsonData())
+        #expect(decoded.blocks[0].blocks[0].kind == .repeats)
+        #expect(decoded.blocks[0].blocks[0].count == 8)
+        #expect(w.blocks.nestingDepth == 2)
+
+        // Une répétition peut maintenant entrer dans une autre.
+        let a = WorkoutBlock.repeats(3, [.steady(60, .watts(200))])
+        let b = WorkoutBlock.repeats(2, [.steady(30, .watts(300))])
+        var blocks = [a, b]
+        do { let moved = blocks.moveBlock(b.id, intoRepeat: a.id); #expect(moved) }
+        #expect(blocks.count == 1)
+        #expect(blocks[0].blocks.last?.id == b.id)
+        // …mais jamais dans ses propres enfants.
+        do { let moved = blocks.moveBlock(a.id, intoRepeat: b.id); #expect(!moved) }
+    }
+
     @Test func durationParsing() throws {
         let p = DurationParseStrategy()
         #expect(try p.parse("10") == 600)

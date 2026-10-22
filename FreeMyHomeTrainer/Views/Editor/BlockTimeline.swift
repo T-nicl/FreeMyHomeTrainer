@@ -59,33 +59,27 @@ struct BlockTimeline: View {
     static let gap: CGFloat = 4
     static let minBarWidth: CGFloat = 54
     private static let groupPadding: CGFloat = 8
+    /// Hauteur ajoutée par un groupe de répétition : marge haute + en-tête « × n ».
+    private static let groupHeader: CGFloat = 36
 
     var body: some View {
         GeometryReader { geo in
             let scale = pointsPerSecond(width: geo.size.width)
             ScrollView(.horizontal) {
                 HStack(alignment: .bottom, spacing: Self.gap) {
-                    ForEach(blocks) { block in
-                        if block.kind == .repeats {
-                            repeatGroup(block, scale: scale)
-                        } else {
-                            bar(block, scale: scale)
-                                .padding(.bottom, Self.groupPadding)
-                        }
-                    }
-                    if blocks.isEmpty {
-                        EmptyDropZone(onDrop: onDrop)
-                            .padding(.bottom, Self.groupPadding)
-                    }
+                    ForEach(blocks) { block in element(block, depth: 0, scale: scale) }
+                    if blocks.isEmpty { EmptyDropZone(onDrop: onDrop) }
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.top, 8)
+                .padding(.bottom, 8 + Self.groupPadding)
                 .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .bottomLeading)
                 .contentShape(Rectangle())
                 .onTapGesture { selectedID = nil }
             }
         }
-        .frame(height: Self.barHeight + 100)
+        // Chaque niveau de répétition imbriquée ajoute un en-tête au-dessus des barres.
+        .frame(height: Self.barHeight + 100 + CGFloat(max(blocks.nestingDepth - 1, 0)) * Self.groupHeader)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
         .overlay(alignment: .bottomLeading) { ftpLine }
         .onChange(of: blocks) { dropHover = nil }
@@ -144,14 +138,14 @@ struct BlockTimeline: View {
     private func pointsPerSecond(width: CGFloat) -> CGFloat {
         let total = blocks.reduce(0) { $0 + $1.displayDuration }
         guard total > 0 else { return 0 }
-        let groups = CGFloat(blocks.filter { $0.kind == .repeats }.count)
-        let overhead = 24 + CGFloat(blocks.count) * Self.gap + groups * (Self.groupPadding * 2 + 8)
+        let groups = CGFloat(blocks.repeatCount)
+        let overhead = 24 + CGFloat(blocks.leafCount + blocks.repeatCount) * Self.gap
+            + groups * (Self.groupPadding * 2 + 8)
         return max((width - overhead) / total, 0)
     }
 
     private var maxWatts: Double {
-        let leaves = blocks.flatMap { $0.kind == .repeats ? $0.blocks : [$0] }
-        let peak = leaves.map { max($0.target.watts(ftp: ftp), $0.endTarget.watts(ftp: ftp)) }.max() ?? 0
+        let peak = blocks.leaves.map { max($0.target.watts(ftp: ftp), $0.endTarget.watts(ftp: ftp)) }.max() ?? 0
         return max(peak * 1.08, Double(ftp) * 1.2, 1)
     }
 
@@ -170,15 +164,21 @@ struct BlockTimeline: View {
                  onDrop: onDrop)
     }
 
-    private func repeatGroup(_ block: WorkoutBlock, scale: CGFloat) -> some View {
-        RepeatGroup(block: block, isSelected: selectedID == block.id,
+    /// Bloc ou répétition ; récursif pour les répétitions imbriquées (d'où `AnyView`).
+    private func element(_ block: WorkoutBlock, depth: Int, scale: CGFloat) -> AnyView {
+        block.kind == .repeats ? AnyView(repeatGroup(block, depth: depth, scale: scale))
+                               : AnyView(bar(block, scale: scale))
+    }
+
+    private func repeatGroup(_ block: WorkoutBlock, depth: Int, scale: CGFloat) -> some View {
+        RepeatGroup(block: block, depth: depth, isSelected: selectedID == block.id,
                     hover: hoverBinding(for: block.id),
                     clearHover: { dropHover = nil },
                     onSelect: { selectedID = block.id },
                     onChangeCount: { onChangeCount(block.id, $0) },
                     onDrop: onDrop) {
             HStack(alignment: .bottom, spacing: Self.gap) {
-                ForEach(block.blocks) { child in bar(child, scale: scale) }
+                ForEach(block.blocks) { child in element(child, depth: depth + 1, scale: scale) }
                 if block.blocks.isEmpty {
                     Text("Glisse un bloc ici")
                         .font(.caption)
@@ -406,6 +406,8 @@ private struct InsertionMarker: View {
 
 private struct RepeatGroup<Content: View>: View {
     let block: WorkoutBlock
+    /// Niveau d'imbrication (0 = répétition de premier niveau).
+    let depth: Int
     let isSelected: Bool
     @Binding var hover: HoverSide?
     let clearHover: () -> Void
@@ -429,10 +431,14 @@ private struct RepeatGroup<Content: View>: View {
             .lineLimit(1)
             content
         }
-        .padding(8)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.06)))
-        .overlay(RoundedRectangle(cornerRadius: 10)
-            .strokeBorder(borderColor, style: StrokeStyle(lineWidth: 2, dash: hover == .inside ? [] : [5, 4])))
+        .padding(.horizontal, 8)
+        .padding(.top, 8)
+        // Le cadre descend sous les libellés sans occuper de place : toutes les barres,
+        // quel que soit leur niveau d'imbrication, restent sur la même ligne de base.
+        .background(frame.fill(Color.primary.opacity(0.06)).padding(.bottom, -bottomOverflow))
+        .overlay(frame
+            .strokeBorder(borderColor, style: StrokeStyle(lineWidth: 2, dash: hover == .inside ? [] : [5, 4]))
+            .padding(.bottom, -bottomOverflow))
         .overlay(alignment: hover == .after ? .trailing : .leading) {
             if hover == .before || hover == .after { InsertionMarker(after: hover == .after) }
         }
@@ -447,6 +453,11 @@ private struct RepeatGroup<Content: View>: View {
             },
             perform: onDrop, onFinish: clearHover))
     }
+
+    private var frame: RoundedRectangle { RoundedRectangle(cornerRadius: 10) }
+
+    /// Débordement du cadre sous les barres, plus faible pour les niveaux imbriqués.
+    private var bottomOverflow: CGFloat { max(8 - CGFloat(depth) * 3, 2) }
 
     private var borderColor: Color {
         if hover == .inside || isSelected { return .accentColor }

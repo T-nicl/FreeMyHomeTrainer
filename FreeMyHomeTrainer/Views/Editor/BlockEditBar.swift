@@ -45,8 +45,8 @@ struct BlockEditBar: View {
                     adaptive {
                         Text("Ajouter dans la répétition :").foregroundStyle(.secondary)
                         HStack {
-                            Button("Constant") { onAddChild(.steady) }
-                            Button("Rampe") { onAddChild(.ramp) }
+                            Button("Bloc") { onAddChild(.steady) }
+                            Button("Répétition") { onAddChild(.repeats) }
                         }
                     }
                 }

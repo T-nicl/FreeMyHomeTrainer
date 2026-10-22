@@ -7,6 +7,7 @@ struct WorkoutEditorView: View {
     @AppStorage(Settings.ftpKey) private var ftp = 200
     @State private var draft: Workout
     @State private var selectedID: WorkoutBlock.ID?
+    @State private var lastDrop: (payload: String, date: Date)?
 
     init(saved: SavedWorkout, onRide: @escaping () -> Void) {
         self.saved = saved
@@ -117,8 +118,7 @@ struct WorkoutEditorView: View {
 
     private func insert(_ block: WorkoutBlock) {
         if let id = selectedID {
-            let anchor = block.kind == .repeats ? (draft.blocks.parentID(of: id) ?? id) : id
-            draft.blocks.insert(block, relativeTo: anchor, after: true)
+            draft.blocks.insert(block, relativeTo: id, after: true)
         } else {
             draft.blocks.append(block)
         }
@@ -126,9 +126,14 @@ struct WorkoutEditorView: View {
     }
 
     /// Animation des réorganisations (dépôt, ajout, suppression).
-    private static let blockAnimation = Animation.spring(duration: 0.35, bounce: 0.15)
+    private static let blockAnimation = Animation.easeInOut(duration: 0.2)
 
     private func handleDrop(_ payload: BlockDragPayload, _ target: BlockDropTarget) {
+        // Dans une répétition, le bloc et la répétition sont deux zones de dépôt superposées :
+        // un même lâcher peut arriver deux fois. On n'applique que le premier.
+        let now = Date()
+        if let last = lastDrop, last.payload == payload.string, now.timeIntervalSince(last.date) < 0.5 { return }
+        lastDrop = (payload.string, now)
         withAnimation(Self.blockAnimation) { applyDrop(payload, target) }
     }
 
@@ -145,16 +150,9 @@ struct WorkoutEditorView: View {
             let block = newBlock(kind)
             switch target {
             case .relative(let targetID, let after):
-                // Une répétition déposée dans une répétition va à côté de celle-ci.
-                let anchor = draft.blocks.canPlace(block, nextTo: targetID)
-                    ? targetID : (draft.blocks.parentID(of: targetID) ?? targetID)
-                draft.blocks.insert(block, relativeTo: anchor, after: after)
+                draft.blocks.insert(block, relativeTo: targetID, after: after)
             case .intoRepeat(let repeatID):
-                if kind == .repeats {
-                    draft.blocks.insert(block, relativeTo: repeatID, after: true)
-                } else {
-                    draft.blocks.appendChild(block, toRepeat: repeatID)
-                }
+                draft.blocks.appendChild(block, toRepeat: repeatID)
             case .end:
                 draft.blocks.append(block)
             }
@@ -173,19 +171,16 @@ struct WorkoutEditorView: View {
     /// Plage de temps couverte par le bloc sélectionné (première occurrence), pour l'aperçu.
     private var selectedRange: Range<TimeInterval>? {
         guard let id = selectedID else { return nil }
-        var t: TimeInterval = 0
-        for b in draft.blocks {
-            if b.id == id { return t..<(t + b.totalDuration) }
-            if b.kind == .repeats {
-                var inner = t
-                for child in b.blocks {
-                    if child.id == id { return inner..<(inner + child.duration) }
-                    inner += child.duration
-                }
+        func range(in blocks: [WorkoutBlock], from start: TimeInterval) -> Range<TimeInterval>? {
+            var t = start
+            for b in blocks {
+                if b.id == id { return t..<(t + b.totalDuration) }
+                if b.kind == .repeats, b.count > 0, let r = range(in: b.blocks, from: t) { return r }
+                t += b.totalDuration
             }
-            t += b.totalDuration
+            return nil
         }
-        return nil
+        return range(in: draft.blocks, from: 0)
     }
 }
 

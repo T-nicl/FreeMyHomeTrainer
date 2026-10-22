@@ -64,11 +64,10 @@ extension Array where Element == WorkoutBlock {
 
     // MARK: - Glisser-déposer
 
-    /// Vrai si `block` peut être placé à côté de `targetID` : pas de répétition imbriquée,
-    /// pas de bloc déposé sur lui-même ni dans ses propres enfants.
+    /// Vrai si `block` peut être placé à côté de `targetID` : pas sur lui-même
+    /// ni dans ses propres enfants (les répétitions peuvent s'imbriquer).
     func canPlace(_ block: WorkoutBlock, nextTo targetID: WorkoutBlock.ID) -> Bool {
-        guard block.id != targetID, block.blocks.find(targetID) == nil else { return false }
-        return block.kind != .repeats || parentID(of: targetID) == nil
+        block.id != targetID && block.blocks.find(targetID) == nil
     }
 
     /// Déplace le bloc `id` juste avant ou après `targetID` (éventuellement dans une autre répétition).
@@ -83,7 +82,7 @@ extension Array where Element == WorkoutBlock {
     /// Déplace le bloc `id` à la fin de la répétition `repeatID`.
     @discardableResult
     mutating func moveBlock(_ id: WorkoutBlock.ID, intoRepeat repeatID: WorkoutBlock.ID) -> Bool {
-        guard let moving = find(id), moving.kind != .repeats, id != repeatID else { return false }
+        guard let moving = find(id), id != repeatID, moving.blocks.find(repeatID) == nil else { return false }
         remove(id)
         appendChild(moving, toRepeat: repeatID)
         return true
@@ -107,6 +106,19 @@ extension WorkoutBlock {
 
     /// Durée affichée dans l'éditeur : une seule itération pour une répétition.
     var displayDuration: TimeInterval {
-        kind == .repeats ? blocks.reduce(0) { $0 + $1.duration } : duration
+        kind == .repeats ? blocks.reduce(0) { $0 + $1.displayDuration } : duration
     }
+}
+
+extension Array where Element == WorkoutBlock {
+    /// Blocs constants et rampes, à toutes les profondeurs.
+    var leaves: [WorkoutBlock] { flatMap { $0.kind == .repeats ? $0.blocks.leaves : [$0] } }
+
+    var leafCount: Int { leaves.count }
+
+    /// Nombre de répétitions, à toutes les profondeurs.
+    var repeatCount: Int { reduce(0) { $0 + ($1.kind == .repeats ? 1 + $1.blocks.repeatCount : 0) } }
+
+    /// Profondeur d'imbrication des répétitions (0 = aucune répétition).
+    var nestingDepth: Int { map { $0.kind == .repeats ? 1 + $0.blocks.nestingDepth : 0 }.max() ?? 0 }
 }
