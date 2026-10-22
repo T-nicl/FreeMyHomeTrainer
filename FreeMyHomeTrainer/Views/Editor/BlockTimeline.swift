@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -86,6 +87,17 @@ struct BlockTimeline: View {
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
         .overlay(alignment: .bottomLeading) { ftpLine }
         .onChange(of: blocks) { dropHover = nil }
+        .task(id: dropHover != nil) { await clearMarkerWhenMouseReleased() }
+    }
+
+    /// macOS ne signale pas toujours la fin d'un glisser (selon l'endroit où l'on lâche).
+    /// Tant qu'un repère est affiché, on vérifie donc le bouton de la souris : relâché,
+    /// le glisser est forcément terminé et le repère disparaît.
+    private func clearMarkerWhenMouseReleased() async {
+        while dropHover != nil, !Task.isCancelled {
+            try? await Task.sleep(for: .milliseconds(150))
+            if NSEvent.pressedMouseButtons & 1 == 0 { dropHover = nil }
+        }
     }
 
     private func hoverBinding(for id: WorkoutBlock.ID) -> Binding<HoverSide?> {
@@ -452,6 +464,12 @@ private struct EmptyDropZone: View {
             .padding(.bottom, 38)
             .onDrop(of: [.plainText], delegate: SideDropDelegate(
                 width: 220, hover: $hover, target: { _ in .end }, perform: onDrop))
+            .task(id: hover != nil) {
+                while hover != nil, !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(150))
+                    if NSEvent.pressedMouseButtons & 1 == 0 { hover = nil }
+                }
+            }
     }
 }
 
