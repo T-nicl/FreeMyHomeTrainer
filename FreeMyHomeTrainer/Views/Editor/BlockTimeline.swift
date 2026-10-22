@@ -46,6 +46,8 @@ struct BlockTimeline: View {
     @Binding var selectedID: WorkoutBlock.ID?
     let onDrop: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
     let onChangeCount: (WorkoutBlock.ID, Int) -> Void
+    /// Bloc modifié en tirant sur ses bords.
+    let onUpdate: (WorkoutBlock) -> Void
 
     static let barHeight: CGFloat = 150
     static let minBarWidth: CGFloat = 54
@@ -98,10 +100,13 @@ struct BlockTimeline: View {
     // MARK: - Éléments
 
     private func bar(_ block: WorkoutBlock, scale: CGFloat) -> some View {
-        BlockBar(block: block, ftp: ftp, maxWatts: maxWatts,
-                 width: max(block.duration * scale, Self.minBarWidth),
+        BlockBar(block: block, ftp: ftp, maxWatts: maxWatts, scale: scale,
                  isSelected: selectedID == block.id,
                  onSelect: { selectedID = block.id },
+                 onUpdate: { updated in
+                     selectedID = updated.id
+                     onUpdate(updated)
+                 },
                  onDrop: onDrop)
     }
 
@@ -131,36 +136,52 @@ private struct BlockBar: View {
     let block: WorkoutBlock
     let ftp: Int
     let maxWatts: Double
-    let width: CGFloat
+    /// Points par seconde (pour convertir un glissement horizontal en durée).
+    let scale: CGFloat
     let isSelected: Bool
     let onSelect: () -> Void
+    let onUpdate: (WorkoutBlock) -> Void
     let onDrop: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
     @State private var hover: HoverSide?
+    /// Valeurs provisoires pendant un redimensionnement (validées au relâchement).
+    @State private var draftDuration: TimeInterval?
+    @State private var draftStart: Double?
+    @State private var draftEnd: Double?
+
+    private static let handle: CGFloat = 10
+    private var height: CGFloat { BlockTimeline.barHeight }
+
+    private var duration: TimeInterval { draftDuration ?? block.duration }
+    private var startWatts: Double { draftStart ?? block.target.watts(ftp: ftp) }
+    private var endWatts: Double {
+        draftEnd ?? (block.kind == .ramp ? block.endTarget.watts(ftp: ftp) : startWatts)
+    }
+    private var width: CGFloat { max(duration * scale, BlockTimeline.minBarWidth) }
+    private var isResizing: Bool { draftDuration != nil || draftStart != nil || draftEnd != nil }
 
     var body: some View {
-        let start = block.target.watts(ftp: ftp)
-        let end = block.kind == .ramp ? block.endTarget.watts(ftp: ftp) : start
-        let shape = RampShape(start: start / maxWatts, end: end / maxWatts)
+        let shape = RampShape(start: startWatts / maxWatts, end: endWatts / maxWatts)
         VStack(spacing: 2) {
             ZStack(alignment: .bottom) {
                 Color.clear
                 shape
-                    .fill(LinearGradient(colors: [zoneColor(start), zoneColor(end)],
+                    .fill(LinearGradient(colors: [zoneColor(startWatts), zoneColor(endWatts)],
                                          startPoint: .leading, endPoint: .trailing))
                     .overlay(shape.stroke(isSelected ? Color.primary : .clear, lineWidth: 2.5))
             }
-            .frame(width: width, height: BlockTimeline.barHeight)
+            .frame(width: width, height: height)
+            .overlay(alignment: .topLeading) { resizeHandles }
             .overlay(alignment: hover == .after ? .trailing : .leading) {
                 if hover == .before || hover == .after { InsertionMarker() }
             }
 
             // Hauteurs fixes : un libellé rétréci ne doit pas décaler la barre verticalement.
-            Text(Format.duration(block.duration))
-                .font(.callout.monospacedDigit().weight(isSelected ? .bold : .regular))
+            Text(Format.duration(duration))
+                .font(.callout.monospacedDigit().weight(isSelected || isResizing ? .bold : .regular))
                 .frame(height: 18)
             Text(powerLabel)
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .font(.caption.monospacedDigit().weight(isResizing ? .bold : .regular))
+                .foregroundStyle(isResizing ? .primary : .secondary)
                 .frame(height: 15)
         }
         .lineLimit(1)
@@ -173,23 +194,113 @@ private struct BlockBar: View {
             width: width, hover: $hover,
             target: { side in .relative(block.id, after: side == .after) },
             perform: onDrop))
-        .help("Clique pour modifier, glisse pour déplacer")
+        .help("Clique pour modifier · glisse pour déplacer · tire le bord droit (durée) ou le haut (puissance)")
+    }
+
+    // MARK: - Poignées de redimensionnement
+
+    @ViewBuilder private var resizeHandles: some View {
+        let h = Self.handle
+        ZStack(alignment: .topLeading) {
+            // Haut : puissance. Une rampe a deux poignées (début à gauche, fin à droite).
+            if block.kind == .ramp {
+                powerHandle(isEnd: false)
+                    .frame(width: max(width / 2 - h, 8), height: h)
+                    .offset(x: 0, y: topY(startWatts) - h / 2)
+                powerHandle(isEnd: true)
+                    .frame(width: max(width / 2 - h, 8), height: h)
+                    .offset(x: width / 2, y: topY(endWatts) - h / 2)
+            } else {
+                powerHandle(isEnd: false)
+                    .frame(width: max(width - h, 8), height: h)
+                    .offset(x: 0, y: topY(startWatts) - h / 2)
+            }
+            // Bord droit : durée.
+            durationHandle
+                .frame(width: h, height: height)
+                .offset(x: width - h / 2)
+        }
+        .frame(width: width, height: height, alignment: .topLeading)
+    }
+
+    private func topY(_ watts: Double) -> CGFloat {
+        height - height * CGFloat(min(max(watts / maxWatts, 0.04), 1))
+    }
+
+    private var durationHandle: some View {
+        HandleArea(vertical: true, visible: isSelected || draftDuration != nil)
+            .pointerStyle(.frameResize(position: .trailing))
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        guard scale > 0 else { return }
+                        let raw = block.duration + value.translation.width / scale
+                        draftDuration = max((raw / 15).rounded() * 15, 15)   // pas de 15 s
+                    }
+                    .onEnded { _ in commit() })
+    }
+
+    private func powerHandle(isEnd: Bool) -> some View {
+        HandleArea(vertical: false, visible: isSelected || isResizing)
+            .pointerStyle(.frameResize(position: .top))
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        let base = isEnd ? (block.kind == .ramp ? block.endTarget.watts(ftp: ftp) : 0)
+                                         : block.target.watts(ftp: ftp)
+                        let raw = base - Double(value.translation.height / height) * maxWatts
+                        let watts = min(max((raw / 5).rounded() * 5, 0), 2000)   // pas de 5 W
+                        if isEnd { draftEnd = watts } else { draftStart = watts }
+                    }
+                    .onEnded { _ in commit() })
+    }
+
+    /// Applique le redimensionnement au bloc, en gardant l'unité (W ou % FTP) de chaque cible.
+    private func commit() {
+        var updated = block
+        if let d = draftDuration { updated.duration = d }
+        if let w = draftStart {
+            updated.target = Self.target(watts: w, like: block.target, ftp: ftp)
+            if block.kind != .ramp { updated.endTarget = updated.target }
+        }
+        if let w = draftEnd { updated.endTarget = Self.target(watts: w, like: block.endTarget, ftp: ftp) }
+        draftDuration = nil
+        draftStart = nil
+        draftEnd = nil
+        onUpdate(updated)
+    }
+
+    static func target(watts: Double, like original: Target, ftp: Int) -> Target {
+        if case .ftpPercent = original, ftp > 0 {
+            return .ftpPercent(Int((watts / Double(ftp) * 100).rounded()))
+        }
+        return .watts(Int(watts.rounded()))
     }
 
     private func zoneColor(_ watts: Double) -> Color { PowerZone(watts: watts, ftp: ftp).color }
 
     private var powerLabel: String {
-        switch block.kind {
-        case .ramp: "\(short(block.target))→\(short(block.endTarget))"
-        default: short(block.target)
-        }
+        block.kind == .ramp ? "\(Int(startWatts.rounded()))→\(Int(endWatts.rounded())) W"
+                            : "\(Int(startWatts.rounded())) W"
     }
+}
 
-    private func short(_ t: Target) -> String {
-        switch t {
-        case .watts(let w): "\(w) W"
-        case .ftpPercent(let p): "\(p) %"
-        }
+/// Zone de prise d'un bord, avec une petite poignée visible quand le bloc est sélectionné.
+private struct HandleArea: View {
+    let vertical: Bool
+    let visible: Bool
+
+    var body: some View {
+        Rectangle()
+            .fill(Color.clear)
+            .contentShape(Rectangle())
+            .overlay {
+                if visible {
+                    Capsule()
+                        .fill(Color.primary.opacity(0.75))
+                        .frame(width: vertical ? 4 : 26, height: vertical ? 26 : 4)
+                }
+            }
     }
 }
 

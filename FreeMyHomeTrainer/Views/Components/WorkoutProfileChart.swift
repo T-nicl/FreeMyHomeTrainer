@@ -116,16 +116,29 @@ struct WorkoutProfileChart: View {
 struct WorkoutSummaryRow: View {
     let timeline: WorkoutTimeline
 
+    /// S'adapte à la largeur : libellé d'intensité masqué, puis passage sur deux lignes.
     var body: some View {
-        HStack(spacing: 24) {
-            StatView(title: "Durée", value: Format.duration(timeline.duration))
-            StatView(title: "Puissance moy.", value: "\(Int(timeline.averageWatts.rounded())) W")
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Intensité").font(.caption).foregroundStyle(.secondary)
-                IntensityStars(rating: timeline.intensityRating, size: 15, showsLabel: true)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 24) { durationAndPower; intensity(showsLabel: true) }
+            HStack(spacing: 16) { durationAndPower; intensity(showsLabel: false) }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 16) { durationAndPower }
+                intensity(showsLabel: true)
             }
-            .lineLimit(1)
         }
+    }
+
+    @ViewBuilder private var durationAndPower: some View {
+        StatView(title: "Durée", value: Format.duration(timeline.duration))
+        StatView(title: "Puissance moy.", value: "\(Int(timeline.averageWatts.rounded())) W")
+    }
+
+    private func intensity(showsLabel: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Intensité").font(.caption).foregroundStyle(.secondary)
+            IntensityStars(rating: timeline.intensityRating, size: 15, showsLabel: showsLabel)
+        }
+        .lineLimit(1)
     }
 }
 

@@ -28,7 +28,8 @@ struct WorkoutEditorView: View {
                                   guard var b = draft.blocks.find(id) else { return }
                                   b.count = min(max(count, 1), 50)
                                   draft.blocks.replace(id, with: b)
-                              })
+                              },
+                              onUpdate: { draft.blocks.replace($0.id, with: $0) })
                 editBar
             }
             .padding(20)
@@ -84,15 +85,16 @@ struct WorkoutEditorView: View {
             BlockEditBar(block: Binding(get: { draft.blocks.find(id) ?? block },
                                         set: { draft.blocks.replace(id, with: $0) }),
                          ftp: ftp,
-                         isNested: draft.blocks.parentID(of: id) != nil,
                          onDuplicate: { if let copy = draft.blocks.duplicate(id) { selectedID = copy } },
                          onDelete: deleteSelection,
-                         onAddChild: { child in
+                         onAddChild: { kind in
+                             let child = newBlock(kind)
                              draft.blocks.appendChild(child, toRepeat: id)
                              selectedID = child.id
                          })
         } else {
-            Label("Clique sur un bloc pour régler sa durée et sa puissance.", systemImage: "hand.tap")
+            Label("Clique sur un bloc pour le régler, ou tire sur son bord droit (durée) ou son haut (puissance).",
+                  systemImage: "hand.tap")
                 .foregroundStyle(.secondary)
                 .padding(.vertical, 8)
         }
@@ -100,13 +102,17 @@ struct WorkoutEditorView: View {
 
     // MARK: - Édition
 
+    /// Nouveaux blocs en watts, à partir d'un pourcentage de la FTP (arrondi à 5 W).
     private func newBlock(_ kind: WorkoutBlock.Kind) -> WorkoutBlock {
-        switch kind {
-        case .steady: .steady(300, .ftpPercent(75))
-        case .ramp: .ramp(300, from: .ftpPercent(50), to: .ftpPercent(75))
-        case .repeats: .repeats(3, [.steady(300, .ftpPercent(100)), .steady(180, .ftpPercent(55))])
+        let w = { (percent: Double) in Target.watts(Self.roundedWatts(Double(ftp) * percent)) }
+        return switch kind {
+        case .steady: .steady(300, w(0.75))
+        case .ramp: .ramp(300, from: w(0.5), to: w(0.75))
+        case .repeats: .repeats(3, [.steady(300, w(1.0)), .steady(180, w(0.55))])
         }
     }
+
+    static func roundedWatts(_ watts: Double) -> Int { Int((watts / 5).rounded()) * 5 }
 
     /// Ajoute après le bloc sélectionné (une répétition n'est jamais imbriquée), sinon à la fin.
     private func add(_ block: WorkoutBlock) {

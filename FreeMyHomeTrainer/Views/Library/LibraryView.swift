@@ -58,10 +58,11 @@ struct LibraryView: View {
     private var selected: SavedWorkout? { workouts.first { $0.id == selection } }
 
     private func create() {
+        let watts = { (percent: Double) in Target.watts(WorkoutEditorView.roundedWatts(Double(ftp) * percent)) }
         let w = Workout(name: "Nouvelle séance", blocks: [
-            .ramp(600, from: .ftpPercent(45), to: .ftpPercent(70)),
-            .repeats(3, [.steady(600, .watts(200)), .steady(300, .ftpPercent(55))]),
-            .steady(300, .ftpPercent(50)),
+            .ramp(600, from: watts(0.45), to: watts(0.7)),
+            .repeats(3, [.steady(600, watts(0.9)), .steady(300, watts(0.55))]),
+            .steady(300, watts(0.5)),
         ])
         let saved = SavedWorkout(w)
         context.insert(saved)

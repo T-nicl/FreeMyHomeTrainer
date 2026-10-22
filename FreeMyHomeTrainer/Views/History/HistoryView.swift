@@ -141,6 +141,7 @@ private struct ActivityDetailView: View {
         if laps.count > 1, !samples.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Intervalles").font(.headline)
+                ScrollView(.horizontal) {
                 Grid(alignment: .trailing, horizontalSpacing: 18, verticalSpacing: 6) {
                     GridRow {
                         Text("#"); Text("Durée"); Text("Cible"); Text("Puiss. moy"); Text("Max"); Text("FC moy"); Text("Cadence")
@@ -165,6 +166,8 @@ private struct ActivityDetailView: View {
                         .lineLimit(1)
                     }
                 }
+                }
+                .scrollIndicators(.automatic)
             }
         }
     }

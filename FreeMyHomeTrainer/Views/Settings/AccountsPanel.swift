@@ -76,8 +76,8 @@ struct AccountsPanel: View {
                     Text("Cette version a été compilée sans clés Strava. Saisis celles de ton application (strava.com/settings/api).")
                         .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    TextField("Client ID", text: $customClientID)
-                    SecureField("Client Secret", text: $customClientSecret)
+                    TextField("", text: $customClientID, prompt: Text("Client ID")).labelsHidden()
+                    SecureField("", text: $customClientSecret, prompt: Text("Client Secret")).labelsHidden()
                     Button("Enregistrer") {
                         uploads.strava.clientID = customClientID
                         uploads.strava.clientSecret = customClientSecret

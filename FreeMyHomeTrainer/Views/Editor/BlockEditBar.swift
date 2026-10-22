@@ -1,61 +1,77 @@
 import SwiftUI
 
 /// Barre d'édition du bloc sélectionné, affichée sous la frise.
+/// Les lignes passent en colonne quand la place manque (jamais de débordement).
 struct BlockEditBar: View {
     @Binding var block: WorkoutBlock
     let ftp: Int
-    let isNested: Bool
     let onDuplicate: () -> Void
     let onDelete: () -> Void
-    let onAddChild: (WorkoutBlock) -> Void
+    let onAddChild: (WorkoutBlock.Kind) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 16) {
-                if block.kind == .repeats {
-                    Label("Répétition", systemImage: "repeat").font(.headline)
-                    Stepper(value: $block.count, in: 1...50) {
-                        Text("\(block.count) fois").monospacedDigit()
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
+                switch block.kind {
+                case .steady, .ramp:
+                    adaptive {
+                        Picker("Type", selection: kindBinding) {
+                            Text("Constant").tag(WorkoutBlock.Kind.steady)
+                            Text("Rampe").tag(WorkoutBlock.Kind.ramp)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .fixedSize()
+                        field("Durée") { DurationField(duration: $block.duration) }
                     }
-                    .fixedSize()
-                } else {
-                    Picker("Type", selection: kindBinding) {
-                        Text("Constant").tag(WorkoutBlock.Kind.steady)
-                        Text("Rampe").tag(WorkoutBlock.Kind.ramp)
+                    if block.kind == .steady {
+                        field("Puissance") { PowerField(target: $block.target, ftp: ftp) }
+                    } else {
+                        adaptive {
+                            field("De") { PowerField(target: $block.target, ftp: ftp) }
+                            field("à") { PowerField(target: $block.endTarget, ftp: ftp) }
+                        }
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                    field("Durée") { DurationField(duration: $block.duration) }
+                case .repeats:
+                    adaptive {
+                        Label("Répétition", systemImage: "repeat").font(.headline)
+                        Stepper(value: $block.count, in: 1...50) {
+                            Text("\(block.count) fois").monospacedDigit()
+                        }
+                        .fixedSize()
+                        Text("Durée totale \(Format.duration(block.totalDuration))")
+                            .foregroundStyle(.secondary)
+                    }
+                    adaptive {
+                        Text("Ajouter dans la répétition :").foregroundStyle(.secondary)
+                        HStack {
+                            Button("Constant") { onAddChild(.steady) }
+                            Button("Rampe") { onAddChild(.ramp) }
+                        }
+                    }
                 }
-                Spacer(minLength: 0)
+            }
+            Spacer(minLength: 0)
+            VStack(spacing: 8) {
                 Button(action: onDuplicate) { Image(systemName: "plus.square.on.square") }
                     .help("Dupliquer (⌘D)")
                     .keyboardShortcut("d", modifiers: .command)
                 Button(role: .destructive, action: onDelete) { Image(systemName: "trash") }
                     .help("Supprimer (⌫)")
             }
-
-            HStack(spacing: 16) {
-                switch block.kind {
-                case .steady:
-                    field("Puissance") { PowerField(target: $block.target, ftp: ftp) }
-                case .ramp:
-                    field("De") { PowerField(target: $block.target, ftp: ftp) }
-                    field("à") { PowerField(target: $block.endTarget, ftp: ftp) }
-                case .repeats:
-                    Text("Ajouter dans la répétition :").foregroundStyle(.secondary)
-                    Button("Constant") { onAddChild(.steady(300, .ftpPercent(90))) }
-                    Button("Rampe") { onAddChild(.ramp(300, from: .ftpPercent(60), to: .ftpPercent(90))) }
-                    Text("Durée totale \(Format.duration(block.totalDuration))")
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-            }
         }
         .lineLimit(1)
         .padding(14)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    /// Côte à côte si ça tient, sinon les uns sous les autres.
+    private func adaptive(@ViewBuilder _ content: () -> some View) -> some View {
+        let items = content()
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 16) { items }
+            VStack(alignment: .leading, spacing: 10) { items }
+        }
     }
 
     private func field(_ title: String, @ViewBuilder content: () -> some View) -> some View {
@@ -82,7 +98,8 @@ struct DurationField: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            TextField("mm:ss", value: $duration, format: DurationFormat())
+            TextField("", value: $duration, format: DurationFormat(), prompt: Text("mm:ss"))
+                .labelsHidden()
                 .textFieldStyle(.roundedBorder)
                 .multilineTextAlignment(.trailing)
                 .frame(width: 70)
@@ -92,71 +109,56 @@ struct DurationField: View {
     }
 }
 
-/// Valeur de puissance + unité (W ou % FTP), avec l'équivalent dans l'autre unité.
+/// Puissance toujours saisie et affichée en watts. La case « % FTP » mémorise la cible
+/// en pourcentage de la FTP : elle suivra alors la FTP si celle-ci change.
 struct PowerField: View {
     @Binding var target: Target
     let ftp: Int
 
-    private enum Unit: Hashable { case watts, percent }
-
     var body: some View {
         HStack(spacing: 6) {
-            TextField("", value: valueBinding, format: .number)
+            TextField("", value: wattsBinding, format: .number)
+                .labelsHidden()
                 .textFieldStyle(.roundedBorder)
                 .multilineTextAlignment(.trailing)
                 .frame(width: 58)
-            Stepper("", onIncrement: { step(+1) }, onDecrement: { step(-1) }).labelsHidden()
-            Picker("Unité", selection: unitBinding) {
-                Text("W").tag(Unit.watts)
-                Text("% FTP").tag(Unit.percent)
+            Text("W")
+            Stepper("", onIncrement: { step(+5) }, onDecrement: { step(-5) }).labelsHidden()
+            Circle().fill(PowerZone(watts: target.watts(ftp: ftp), ftp: ftp).color).frame(width: 9, height: 9)
+            Toggle(isOn: linkedBinding) {
+                Text("\(percent) % FTP").monospacedDigit()
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            let watts = target.watts(ftp: ftp)
-            Circle().fill(PowerZone(watts: watts, ftp: ftp).color).frame(width: 9, height: 9)
-            Text(equivalent(watts)).foregroundStyle(.secondary).monospacedDigit()
+            .toggleStyle(.checkbox)
+            .help("Cocher pour que la cible suive ta FTP si elle change")
         }
     }
 
-    private var unit: Unit {
-        if case .watts = target { .watts } else { .percent }
+    private var isLinked: Bool {
+        if case .ftpPercent = target { true } else { false }
     }
 
-    private func equivalent(_ watts: Double) -> String {
-        switch target {
-        case .watts: ftp > 0 ? "\(Int((watts / Double(ftp) * 100).rounded())) %" : ""
-        case .ftpPercent: "\(Int(watts.rounded())) W"
-        }
+    private var percent: Int {
+        ftp > 0 ? Int((target.watts(ftp: ftp) / Double(ftp) * 100).rounded()) : 0
     }
 
-    private var unitBinding: Binding<Unit> {
-        Binding(get: { unit }, set: { newUnit in
-            guard newUnit != unit else { return }
-            let watts = target.watts(ftp: ftp)
-            target = newUnit == .watts
-                ? .watts(Int(watts.rounded()))
-                : .ftpPercent(ftp > 0 ? Int((watts / Double(ftp) * 100).rounded()) : 100)
+    private var wattsBinding: Binding<Int> {
+        Binding(get: { Int(target.watts(ftp: ftp).rounded()) }, set: { setWatts($0) })
+    }
+
+    private var linkedBinding: Binding<Bool> {
+        Binding(get: { isLinked }, set: { linked in
+            let watts = Int(target.watts(ftp: ftp).rounded())
+            target = linked && ftp > 0 ? .ftpPercent(percent) : .watts(watts)
         })
     }
 
-    private var valueBinding: Binding<Int> {
-        Binding(get: {
-            switch target {
-            case .watts(let w): w
-            case .ftpPercent(let p): p
-            }
-        }, set: { v in
-            let v = max(v, 0)
-            target = unit == .watts ? .watts(v) : .ftpPercent(v)
-        })
+    private func setWatts(_ watts: Int) {
+        let w = max(watts, 0)
+        target = isLinked && ftp > 0 ? .ftpPercent(Int((Double(w) / Double(ftp) * 100).rounded())) : .watts(w)
     }
 
-    private func step(_ direction: Int) {
-        switch target {
-        case .watts(let w): target = .watts(max(w + 5 * direction, 0))
-        case .ftpPercent(let p): target = .ftpPercent(max(p + direction, 0))
-        }
+    private func step(_ delta: Int) {
+        setWatts(Int(target.watts(ftp: ftp).rounded()) + delta)
     }
 }
 

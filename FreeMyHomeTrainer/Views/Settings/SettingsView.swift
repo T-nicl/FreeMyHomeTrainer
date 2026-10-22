@@ -9,7 +9,7 @@ struct SettingsView: View {
             Section {
                 LabeledContent("FTP") {
                     HStack {
-                        TextField("FTP", value: $ftp, format: .number).frame(width: 70)
+                        TextField("", value: $ftp, format: .number).labelsHidden().frame(width: 70)
                         Text("W")
                         Stepper("", value: $ftp, in: 50...600, step: 5).labelsHidden()
                     }
@@ -17,7 +17,8 @@ struct SettingsView: View {
                 }
                 LabeledContent("Poids") {
                     HStack {
-                        TextField("Poids", value: $weight, format: .number.precision(.fractionLength(0...1)))
+                        TextField("", value: $weight, format: .number.precision(.fractionLength(0...1)))
+                            .labelsHidden()
                             .frame(width: 70)
                         Text("kg")
                     }
