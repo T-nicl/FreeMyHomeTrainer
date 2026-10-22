@@ -8,7 +8,7 @@ struct WorkoutEditorView: View {
     @State private var draft: Workout
     @State private var selectedID: WorkoutBlock.ID?
     /// Glisser en cours (bloc existant ou nouveau bloc de la palette).
-    @State private var drag: BlockDrag?
+    @State private var dragState = BlockDragState()
     @State private var frames = BlockFrames()
 
     init(saved: SavedWorkout, onRide: @escaping () -> Void) {
@@ -26,7 +26,7 @@ struct WorkoutEditorView: View {
                     .frame(height: 56)
                 palette
                 BlockTimeline(blocks: draft.blocks, ftp: ftp, selectedID: $selectedID,
-                              frames: frames, drag: drag,
+                              frames: frames, dragState: dragState,
                               onDragChanged: dragChanged, onDragEnded: dragEnded,
                               onChangeCount: { id, count in
                                   guard var b = draft.blocks.find(id) else { return }
@@ -38,11 +38,9 @@ struct WorkoutEditorView: View {
             }
             .padding(20)
             .coordinateSpace(EditorSpace.coordinateSpace)
-            .overlay {
-                if let drag {
-                    BlockDragOverlay(drag: drag, frames: frames, blocks: draft.blocks, ftp: ftp)
-                }
-            }
+            // Le corps de l'éditeur ne lit pas l'état du glisser : un mouvement de souris
+            // ne redessine que la superposition, pas toute la page.
+            .overlay { BlockDragOverlay(state: dragState, frames: frames, blocks: draft.blocks, ftp: ftp) }
         }
         .focusable()
         .focusEffectDisabled()
@@ -146,17 +144,17 @@ struct WorkoutEditorView: View {
     private func dragChanged(_ payload: BlockDragPayload, _ location: CGPoint) {
         let target = BlockDropResolver.target(at: location, payload: payload, blocks: draft.blocks,
                                               items: frames.items, timeline: frames.timeline)
-        drag = BlockDrag(payload: payload, location: location, target: target)
+        dragState.update(payload: payload, location: location, target: target)
     }
 
     /// Lâcher : le bloc est posé directement à l'emplacement indiqué par le repère, sans
     /// animation de trajet (l'étiquette qui suivait le pointeur s'y trouve déjà).
     private func dragEnded(_ location: CGPoint) {
-        guard let current = drag else { return }
-        let target = BlockDropResolver.target(at: location, payload: current.payload, blocks: draft.blocks,
+        guard let payload = dragState.payload else { return }
+        let target = BlockDropResolver.target(at: location, payload: payload, blocks: draft.blocks,
                                               items: frames.items, timeline: frames.timeline)
-        drag = nil
-        if let target { applyDrop(current.payload, target) }
+        dragState.reset()
+        if let target { applyDrop(payload, target) }
     }
 
     private func applyDrop(_ payload: BlockDragPayload, _ target: BlockDropTarget) {

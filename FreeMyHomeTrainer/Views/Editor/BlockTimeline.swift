@@ -8,7 +8,7 @@ struct BlockTimeline: View {
     @Binding var selectedID: WorkoutBlock.ID?
     /// Positions des éléments, mesurées ici et lues par l'éditeur pendant un glisser.
     let frames: BlockFrames
-    let drag: BlockDrag?
+    let dragState: BlockDragState
     let onDragChanged: (BlockDragPayload, CGPoint) -> Void
     let onDragEnded: (CGPoint) -> Void
     let onChangeCount: (WorkoutBlock.ID, Int) -> Void
@@ -29,7 +29,7 @@ struct BlockTimeline: View {
             ScrollView(.horizontal) {
                 HStack(alignment: .bottom, spacing: Self.gap) {
                     ForEach(blocks) { block in element(block, depth: 0, scale: scale) }
-                    if blocks.isEmpty { EmptyDropZone(isTargeted: drag?.target == .end) }
+                    if blocks.isEmpty { EmptyDropZone(isTargeted: dragState.target == .end) }
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
@@ -48,10 +48,7 @@ struct BlockTimeline: View {
         }
     }
 
-    private var draggedID: WorkoutBlock.ID? {
-        if case .existing(let id) = drag?.payload { return id }
-        return nil
-    }
+    private var draggedID: WorkoutBlock.ID? { dragState.draggedID }
 
     private func measure(_ id: WorkoutBlock.ID, isRepeat: Bool, depth: Int) -> (CGRect) -> Void {
         { [frames] rect in frames.items[id] = BlockFrames.Item(rect: rect, isRepeat: isRepeat, depth: depth) }
@@ -124,7 +121,7 @@ struct BlockTimeline: View {
 
     private func repeatGroup(_ block: WorkoutBlock, depth: Int, scale: CGFloat) -> some View {
         RepeatGroup(block: block, depth: depth, isSelected: selectedID == block.id,
-                    isDropTarget: drag?.target == .intoRepeat(block.id),
+                    isDropTarget: dragState.target == .intoRepeat(block.id),
                     onSelect: { selectedID = block.id },
                     onChangeCount: { onChangeCount(block.id, $0) },
                     onDragChanged: { onDragChanged(.existing(block.id), $0) },

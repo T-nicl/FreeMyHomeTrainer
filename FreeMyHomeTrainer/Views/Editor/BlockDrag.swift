@@ -20,11 +20,32 @@ enum BlockDragPayload: Equatable {
     case new(WorkoutBlock.Kind)
 }
 
-/// Glisser en cours, dans le repère de l'éditeur.
-struct BlockDrag: Equatable {
-    var payload: BlockDragPayload
-    var location: CGPoint
-    var target: BlockDropTarget?
+/// Glisser en cours. Observé propriété par propriété : la position du pointeur change à
+/// chaque mouvement mais n'est lue que par l'étiquette ; la frise ne lit que `payload` et
+/// `target`, qui changent rarement. Ainsi un mouvement ne redessine pas tout l'éditeur.
+@MainActor
+@Observable
+final class BlockDragState {
+    private(set) var payload: BlockDragPayload?
+    private(set) var location: CGPoint = .zero
+    private(set) var target: BlockDropTarget?
+
+    var draggedID: WorkoutBlock.ID? {
+        if case .existing(let id) = payload { return id }
+        return nil
+    }
+
+    func update(payload: BlockDragPayload, location: CGPoint, target: BlockDropTarget?) {
+        // Une affectation notifie même si la valeur est identique : on ne touche qu'au nécessaire.
+        if self.payload != payload { self.payload = payload }
+        self.location = location
+        if self.target != target { self.target = target }
+    }
+
+    func reset() {
+        payload = nil
+        target = nil
+    }
 }
 
 /// Repère commun à l'éditeur, à la frise et à la palette.
@@ -93,8 +114,9 @@ enum BlockDropResolver {
 }
 
 /// Repère d'insertion et étiquette qui suit le pointeur, dessinés par-dessus l'éditeur.
+/// Seule vue qui lit la position du pointeur : c'est la seule redessinée à chaque mouvement.
 struct BlockDragOverlay: View {
-    let drag: BlockDrag
+    let state: BlockDragState
     let frames: BlockFrames
     let blocks: [WorkoutBlock]
     let ftp: Int
@@ -105,29 +127,39 @@ struct BlockDragOverlay: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.clear
-            if let marker = markerRect {
-                Capsule()
-                    .fill(Color.gray.opacity(0.6))
-                    .frame(width: marker.width, height: marker.height)
-                    .position(x: marker.midX, y: marker.midY)
+            if let payload = state.payload {
+                if let marker = markerRect {
+                    Capsule()
+                        .fill(Color.gray.opacity(0.6))
+                        .frame(width: marker.width, height: marker.height)
+                        .position(x: marker.midX, y: marker.midY)
+                }
+                DragGhost(payload: payload, blocks: blocks, ftp: ftp, isValid: state.target != nil)
+                    .position(x: state.location.x, y: state.location.y - 30)
             }
-            ghost
-                .position(x: drag.location.x, y: drag.location.y - 30)
         }
         .allowsHitTesting(false)
     }
 
     /// Trait vertical au milieu de l'espace entre deux éléments.
     private var markerRect: CGRect? {
-        guard case .relative(let id, let after) = drag.target, let item = frames.items[id] else { return nil }
+        guard case .relative(let id, let after) = state.target, let item = frames.items[id] else { return nil }
         let r = item.rect
         let x = after ? r.maxX + BlockTimeline.gap / 2 : r.minX - BlockTimeline.gap / 2
         let top = r.minY + 12
         let bottom = r.maxY - Self.labelsHeight - 12
         return CGRect(x: x - 1, y: top, width: 2, height: max(bottom - top, 20))
     }
+}
 
-    private var ghost: some View {
+/// Étiquette qui suit le pointeur pendant un glisser.
+private struct DragGhost: View {
+    let payload: BlockDragPayload
+    let blocks: [WorkoutBlock]
+    let ftp: Int
+    let isValid: Bool
+
+    var body: some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
             Text(title).monospacedDigit()
@@ -140,16 +172,16 @@ struct BlockDragOverlay: View {
         .padding(.vertical, 7)
         .background(color.opacity(0.92), in: RoundedRectangle(cornerRadius: 9))
         .shadow(color: .black.opacity(0.25), radius: 6, y: 3)
-        .opacity(drag.target == nil ? 0.55 : 1)
+        .opacity(isValid ? 1 : 0.55)
     }
 
     private var block: WorkoutBlock? {
-        if case .existing(let id) = drag.payload { return blocks.find(id) }
+        if case .existing(let id) = payload { return blocks.find(id) }
         return nil
     }
 
     private var kind: WorkoutBlock.Kind {
-        switch drag.payload {
+        switch payload {
         case .existing: block?.kind ?? .steady
         case .new(let kind): kind
         }
