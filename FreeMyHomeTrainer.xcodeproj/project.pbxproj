@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0C1F07620DACCBF5AEE611EE /* MiniOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7480AF1FA5388DF6640D50CB /* MiniOverlay.swift */; };
 		1C4CC8D18FC9DE5F13510ED3 /* WorkoutTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = C79796A57C74986BB00360DD /* WorkoutTimeline.swift */; };
 		1F5DD6313D9D13C7C4E41754 /* ActivityMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B74FE814B76070EBE93518B /* ActivityMetrics.swift */; };
 		36F11621AA0357C40982410E /* WorkoutEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE5EC75BB4ECD5680A918C05 /* WorkoutEditorView.swift */; };
@@ -67,6 +68,7 @@
 		64D27D8B13E9D37C32DA2AD2 /* BlockEditBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockEditBar.swift; sourceTree = "<group>"; };
 		715497C84B8769B7204198F6 /* DeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceManager.swift; sourceTree = "<group>"; };
 		731525CDD980AAC6226BEDBA /* VirtualBike.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualBike.swift; sourceTree = "<group>"; };
+		7480AF1FA5388DF6640D50CB /* MiniOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniOverlay.swift; sourceTree = "<group>"; };
 		762D255797D536FD6F0E4BDE /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		81FBACACD07BDF2F44512052 /* FreeMyHomeTrainerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FreeMyHomeTrainerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		91243D630AAA1070AD1E18FD /* FTMSParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FTMSParser.swift; sourceTree = "<group>"; };
@@ -172,6 +174,7 @@
 			isa = PBXGroup;
 			children = (
 				3CE1FBDC32370741BBD0A752 /* DevicesPanel.swift */,
+				7480AF1FA5388DF6640D50CB /* MiniOverlay.swift */,
 				5803BDDFC842B3995984A861 /* RideView.swift */,
 			);
 			path = Ride;
@@ -387,6 +390,7 @@
 				6765D16693567985D9C3C95D /* IntensityRating.swift in Sources */,
 				5068C90E04A25EB1C9FF2387 /* Keychain.swift in Sources */,
 				D8FEE126465BB8D0EAA04723 /* LibraryView.swift in Sources */,
+				0C1F07620DACCBF5AEE611EE /* MiniOverlay.swift in Sources */,
 				9DCF763CC0A52C71CD4D95D2 /* Persistence.swift in Sources */,
 				60DF425AFA23E894C641012F /* RideView.swift in Sources */,
 				688B90E8F1362EA92D9C6B46 /* SettingsView.swift in Sources */,

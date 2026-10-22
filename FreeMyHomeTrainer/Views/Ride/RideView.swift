@@ -41,6 +41,7 @@ struct RideView: View {
 
     private func finish() {
         guard let engine = appState.engine else { return }
+        MiniOverlay.shared.close()
         engine.finish()
         do {
             if let record = try ActivitySaver.save(engine: engine, context: context) {
@@ -275,6 +276,10 @@ private struct LiveRideView: View {
                     .help("Passer à l'intervalle suivant")
             }
             Spacer(minLength: 8)
+            Button { MiniOverlay.shared.show(engine: engine, devices: devices) } label: {
+                Label("Mini", systemImage: "pip.enter")
+            }
+            .help("Réduire en mini-fenêtre au-dessus de tout (pour regarder une vidéo en plein écran)")
             Button { engine.togglePause() } label: {
                 Label(engine.state == .paused ? "Reprendre" : "Pause",
                       systemImage: engine.state == .paused ? "play.fill" : "pause.fill")
