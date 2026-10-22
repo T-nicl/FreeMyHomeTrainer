@@ -112,6 +112,10 @@ struct WorkoutEditorView: View {
 
     /// Ajoute après le bloc sélectionné (une répétition n'est jamais imbriquée), sinon à la fin.
     private func add(_ block: WorkoutBlock) {
+        withAnimation(Self.blockAnimation) { insert(block) }
+    }
+
+    private func insert(_ block: WorkoutBlock) {
         if let id = selectedID {
             let anchor = block.kind == .repeats ? (draft.blocks.parentID(of: id) ?? id) : id
             draft.blocks.insert(block, relativeTo: anchor, after: true)
@@ -121,7 +125,14 @@ struct WorkoutEditorView: View {
         selectedID = block.id
     }
 
+    /// Animation des réorganisations (dépôt, ajout, suppression).
+    private static let blockAnimation = Animation.spring(duration: 0.35, bounce: 0.15)
+
     private func handleDrop(_ payload: BlockDragPayload, _ target: BlockDropTarget) {
+        withAnimation(Self.blockAnimation) { applyDrop(payload, target) }
+    }
+
+    private func applyDrop(_ payload: BlockDragPayload, _ target: BlockDropTarget) {
         switch payload {
         case .existing(let id):
             switch target {
@@ -153,8 +164,10 @@ struct WorkoutEditorView: View {
 
     private func deleteSelection() {
         guard let id = selectedID else { return }
-        draft.blocks.remove(id)
-        selectedID = nil
+        withAnimation(Self.blockAnimation) {
+            draft.blocks.remove(id)
+            selectedID = nil
+        }
     }
 
     /// Plage de temps couverte par le bloc sélectionné (première occurrence), pour l'aperçu.

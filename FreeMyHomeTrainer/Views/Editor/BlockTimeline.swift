@@ -55,6 +55,8 @@ struct BlockTimeline: View {
     @State private var dropHover: (id: WorkoutBlock.ID, side: HoverSide)?
 
     static let barHeight: CGFloat = 150
+    /// Espace entre deux blocs ; le repère d'insertion est dessiné en son milieu.
+    static let gap: CGFloat = 4
     static let minBarWidth: CGFloat = 54
     private static let groupPadding: CGFloat = 8
 
@@ -62,7 +64,7 @@ struct BlockTimeline: View {
         GeometryReader { geo in
             let scale = pointsPerSecond(width: geo.size.width)
             ScrollView(.horizontal) {
-                HStack(alignment: .bottom, spacing: 4) {
+                HStack(alignment: .bottom, spacing: Self.gap) {
                     ForEach(blocks) { block in
                         if block.kind == .repeats {
                             repeatGroup(block, scale: scale)
@@ -143,7 +145,7 @@ struct BlockTimeline: View {
         let total = blocks.reduce(0) { $0 + $1.displayDuration }
         guard total > 0 else { return 0 }
         let groups = CGFloat(blocks.filter { $0.kind == .repeats }.count)
-        let overhead = 24 + CGFloat(blocks.count) * 4 + groups * (Self.groupPadding * 2 + 8)
+        let overhead = 24 + CGFloat(blocks.count) * Self.gap + groups * (Self.groupPadding * 2 + 8)
         return max((width - overhead) / total, 0)
     }
 
@@ -175,7 +177,7 @@ struct BlockTimeline: View {
                     onSelect: { selectedID = block.id },
                     onChangeCount: { onChangeCount(block.id, $0) },
                     onDrop: onDrop) {
-            HStack(alignment: .bottom, spacing: 3) {
+            HStack(alignment: .bottom, spacing: Self.gap) {
                 ForEach(block.blocks) { child in bar(child, scale: scale) }
                 if block.blocks.isEmpty {
                     Text("Glisse un bloc ici")
@@ -233,7 +235,7 @@ private struct BlockBar: View {
             .frame(width: width, height: height)
             .overlay(alignment: .topLeading) { resizeHandles }
             .overlay(alignment: hover == .after ? .trailing : .leading) {
-                if hover == .before || hover == .after { InsertionMarker() }
+                if hover == .before || hover == .after { InsertionMarker(after: hover == .after) }
             }
 
             // Hauteurs fixes : un libellé rétréci ne doit pas décaler la barre verticalement.
@@ -385,12 +387,18 @@ struct RampShape: Shape {
 }
 
 /// Repère discret indiquant où le bloc glissé sera déposé.
+/// « Après A » et « avant B » désignent le même emplacement : le repère est donc décalé
+/// au milieu de l'espace entre les deux blocs, pour apparaître toujours au même endroit.
 private struct InsertionMarker: View {
+    let after: Bool
+    private static let width: CGFloat = 2
+
     var body: some View {
         Capsule()
             .fill(Color.gray.opacity(0.6))
-            .frame(width: 2)
+            .frame(width: Self.width)
             .padding(.vertical, 12)
+            .offset(x: (BlockTimeline.gap + Self.width) / 2 * (after ? 1 : -1))
     }
 }
 
@@ -426,7 +434,7 @@ private struct RepeatGroup<Content: View>: View {
         .overlay(RoundedRectangle(cornerRadius: 10)
             .strokeBorder(borderColor, style: StrokeStyle(lineWidth: 2, dash: hover == .inside ? [] : [5, 4])))
         .overlay(alignment: hover == .after ? .trailing : .leading) {
-            if hover == .before || hover == .after { InsertionMarker() }
+            if hover == .before || hover == .after { InsertionMarker(after: hover == .after) }
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .contentShape(Rectangle())
