@@ -1,0 +1,12 @@
+// Réglages communs à tous les développeurs.
+// Par défaut : signature locale (« Sign to Run Locally ») et aucune clé Strava.
+// Pour personnaliser, copie Local.xcconfig.example en Local.xcconfig (ignoré par git).
+
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+
+STRAVA_CLIENT_ID =
+STRAVA_CLIENT_SECRET =
+
+#include? "Local.xcconfig"

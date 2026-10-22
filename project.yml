@@ -1,0 +1,66 @@
+name: FreeMyHomeTrainer
+options:
+  bundleIdPrefix: fr.timothenicole
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  FreeMyHomeTrainer:
+    type: application
+    platform: macOS
+    sources:
+      - FreeMyHomeTrainer
+    info:
+      path: FreeMyHomeTrainer/Support/Info.plist
+      properties:
+        CFBundleDisplayName: FreeMyHomeTrainer
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSApplicationCategoryType: public.app-category.healthcare-fitness
+        StravaClientID: $(STRAVA_CLIENT_ID)
+        StravaClientSecret: $(STRAVA_CLIENT_SECRET)
+        NSBluetoothAlwaysUsageDescription: "FreeMyHomeTrainer se connecte en Bluetooth à ton home trainer et à ta ceinture cardio."
+        CFBundleURLTypes:
+          - CFBundleURLName: fr.timothenicole.FreeMyHomeTrainer.oauth
+            CFBundleURLSchemes: [freemyhometrainer]
+    entitlements:
+      path: FreeMyHomeTrainer/Support/FreeMyHomeTrainer.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.device.bluetooth: true
+        com.apple.security.network.client: true
+        com.apple.security.files.user-selected.read-write: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.timothenicole.FreeMyHomeTrainer
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  FreeMyHomeTrainerTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - FreeMyHomeTrainerTests
+    dependencies:
+      - target: FreeMyHomeTrainer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.timothenicole.FreeMyHomeTrainerTests
+        GENERATE_INFOPLIST_FILE: YES
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/FreeMyHomeTrainer.app/Contents/MacOS/FreeMyHomeTrainer"
+schemes:
+  FreeMyHomeTrainer:
+    build:
+      targets:
+        FreeMyHomeTrainer: all
+        FreeMyHomeTrainerTests: [test]
+    test:
+      targets:
+        - FreeMyHomeTrainerTests

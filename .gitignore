@@ -1,0 +1,8 @@
+build/
+DerivedData/
+.DS_Store
+xcuserdata/
+*.xcuserstate
+
+# Réglages personnels (signature, clés Strava)
+Config/Local.xcconfig

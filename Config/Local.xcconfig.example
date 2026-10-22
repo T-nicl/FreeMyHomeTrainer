@@ -1,0 +1,10 @@
+// Copie ce fichier en « Local.xcconfig » (ignoré par git) et remplis-le.
+
+// Signature avec ton compte Apple (facultatif ; sinon signature locale).
+// CODE_SIGN_IDENTITY = Apple Development
+// DEVELOPMENT_TEAM = XXXXXXXXXX
+
+// Clés de ton application Strava (https://www.strava.com/settings/api),
+// avec « localhost » comme Authorization Callback Domain.
+STRAVA_CLIENT_ID =
+STRAVA_CLIENT_SECRET =
