@@ -2,8 +2,8 @@
 
 Application macOS pour faire des séances structurées sur home trainer, sans abonnement et sans
 monde virtuel : tu crées tes séances (« 3x10' à 200 W »), l'app pilote le trainer en mode ERG,
-affiche la puissance, la cadence et la fréquence cardiaque, puis envoie la sortie sur Strava
-et Garmin Connect.
+affiche la puissance, la cadence et la fréquence cardiaque, puis envoie la sortie sur
+Garmin Connect, qui la transmet à Strava.
 
 ## Fonctionnalités
 
@@ -15,7 +15,7 @@ et Garmin Connect.
 - **Pendant la séance** : grands chiffres, profil avec la puissance réelle, bips aux changements
   d'intervalle, pause automatique, intensité ±5 % (↑ / ↓), passer un intervalle.
 - **Historique** avec courbes et intervalles, export `.fit`.
-- **Envoi automatique** sur Strava (API officielle) et Garmin Connect (non officiel, voir plus bas).
+- **Envoi automatique** sur Garmin Connect, puis Strava via la synchronisation Garmin → Strava.
 - **Trainer simulé** pour essayer l'app sans vélo.
 
 ## Installation (depuis le code)
@@ -32,36 +32,28 @@ n'est nécessaire. Au premier lancement, macOS demande l'autorisation d'utiliser
 ### Réglages personnels (facultatif)
 
 Copie `Config/Local.xcconfig.example` en `Config/Local.xcconfig` (ce fichier n'est jamais envoyé
-sur GitHub) pour :
+sur GitHub) pour signer avec ton compte Apple (`CODE_SIGN_IDENTITY`, `DEVELOPMENT_TEAM`).
 
-- signer avec ton compte Apple (`CODE_SIGN_IDENTITY`, `DEVELOPMENT_TEAM`) ;
-- intégrer les clés de ton application Strava (voir ci-dessous).
+## Strava et Garmin Connect
 
-## Strava
+Dans l'app : **Réglages › Comptes › Connecter Garmin**. La page de connexion officielle de Garmin
+s'ouvre ; l'app ne voit jamais le mot de passe et ne garde qu'un jeton, dans le Trousseau macOS.
+Chaque sortie est ensuite envoyée automatiquement sur Garmin Connect.
 
-L'app utilise l'API officielle de Strava, qui demande une « application » Strava :
+**Pour Strava** : dans Garmin Connect, active une fois *Paramètres › Applications connectées ›
+Strava*. Garmin transmet alors tes sorties à Strava automatiquement.
 
-1. Va sur <https://www.strava.com/settings/api> et crée une application (gratuit).
-2. Mets `localhost` comme **Authorization Callback Domain**.
-3. Copie le **Client ID** et le **Client Secret** dans `Config/Local.xcconfig`
-   (`STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`), puis recompile.
-4. Dans l'app : **Réglages › Comptes › Connecter Strava**.
+> Pourquoi pas d'envoi direct vers Strava ? Depuis juin 2026, créer une application sur l'API
+> Strava demande un abonnement Strava payant au développeur, avec un nombre d'athlètes limité.
+> Passer par Garmin Connect évite ces contraintes.
 
-⚠️ Une nouvelle application Strava n'accepte qu'**un seul athlète** (son créateur). Pour que des
-amis puissent se connecter avec une app compilée avec tes clés, demande une augmentation de
-capacité à Strava depuis la page de ton application. Sinon, chacun peut créer sa propre
-application Strava et saisir ses clés dans les Réglages.
+### Limite : envoi Garmin non officiel
 
-## Garmin Connect (expérimental)
-
-Garmin ne propose pas d'API publique aux particuliers. L'app ouvre la page de connexion
-officielle de Garmin, récupère un jeton (le mot de passe n'est jamais vu par l'app) et envoie
-le `.fit` comme le fait l'app mobile Garmin Connect — même méthode que la librairie open source
+Garmin ne propose pas d'API publique aux particuliers. L'app envoie le `.fit` comme le fait
+l'app mobile Garmin Connect — même méthode que la librairie open source
 [garth](https://github.com/matin/garth). Cela peut cesser de fonctionner si Garmin change sa
 connexion ; l'export `.fit` depuis l'historique reste possible pour un import manuel sur
-connect.garmin.com.
-
-Les jetons Strava et Garmin sont stockés dans le Trousseau macOS.
+connect.garmin.com ou strava.com.
 
 ## Développement
 
@@ -75,7 +67,7 @@ Les jetons Strava et Garmin sont stockés dans le Trousseau macOS.
 | `Model/` | Séances (format JSON), timeline, note d'intensité, persistance |
 | `Bluetooth/` | FTMS (trainer), cardio, trainer simulé |
 | `Engine/` | Déroulé de la séance, enregistrement, statistiques |
-| `Export/` | Encodeur `.fit`, Strava, Garmin |
+| `Export/` | Encodeur `.fit`, envoi Garmin |
 | `Views/` | Interface SwiftUI |
 
 Le format JSON des séances est volontairement simple pour qu'un LLM (Ollama, Mistral…) puisse

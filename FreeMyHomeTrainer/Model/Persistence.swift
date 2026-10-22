@@ -77,8 +77,6 @@ final class ActivityRecord {
     var lapsData: Data = Data()
     var fitFileName: String?
 
-    var stravaStatusRaw: String = UploadStatus.none.rawValue
-    var stravaActivityID: Int?
     var garminStatusRaw: String = UploadStatus.none.rawValue
     var lastUploadError: String?
 
@@ -96,11 +94,6 @@ final class ActivityRecord {
     var laps: [Lap] {
         get { (try? JSONDecoder().decode([Lap].self, from: lapsData)) ?? [] }
         set { lapsData = (try? JSONEncoder().encode(newValue)) ?? Data() }
-    }
-
-    var stravaStatus: UploadStatus {
-        get { UploadStatus(rawValue: stravaStatusRaw) ?? .none }
-        set { stravaStatusRaw = newValue.rawValue }
     }
 
     var garminStatus: UploadStatus {

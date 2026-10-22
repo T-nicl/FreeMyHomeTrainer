@@ -1,170 +1,99 @@
-import AuthenticationServices
 import SwiftUI
 import WebKit
 
-/// Boutons « Connecter Strava » / « Connecter Garmin ». Une seule connexion suffit :
-/// seuls les jetons sont conservés (dans le Trousseau), jamais le mot de passe.
+/// Bouton « Connecter Garmin » : une seule connexion suffit, seuls les jetons sont conservés
+/// (dans le Trousseau), jamais le mot de passe. Strava est alimenté par Garmin Connect.
 struct AccountsPanel: View {
-    /// Version compacte (écran Rouler) : sans les options d'envoi automatique.
+    /// Version compacte (écran Rouler) : sans les options ni l'aide Strava détaillée.
     var compact = false
 
     @Environment(UploadCenter.self) private var uploads
-    @Environment(\.webAuthenticationSession) private var webAuth
-    @AppStorage(Settings.stravaAutoUploadKey) private var stravaAuto = true
     @AppStorage(Settings.garminAutoUploadKey) private var garminAuto = true
 
-    @State private var stravaBusy = false
-    @State private var garminBusy = false
-    @State private var showGarminLogin = false
+    @State private var busy = false
+    @State private var showLogin = false
     @State private var error: String?
-    @State private var customClientID = ""
-    @State private var customClientSecret = ""
 
-    private static let stravaOrange = Color(red: 0.99, green: 0.32, blue: 0.0)
     private static let garminBlue = Color(red: 0.0, green: 0.47, blue: 0.75)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            AccountRow(name: "Strava", icon: "figure.outdoor.cycle", tint: Self.stravaOrange,
-                       connected: uploads.stravaConnected, detail: uploads.stravaAthlete,
-                       busy: stravaBusy, enabled: uploads.strava.hasCredentials,
-                       connect: { Task { await connectStrava() } },
-                       disconnect: {
-                           uploads.strava.disconnect()
-                           uploads.refreshAccounts()
-                       })
-            if !compact, uploads.stravaConnected {
-                Toggle("Envoyer automatiquement sur Strava après chaque sortie", isOn: $stravaAuto)
-                    .padding(.leading, 4)
+            HStack(spacing: 12) {
+                Image(systemName: "applewatch")
+                    .font(.title3)
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .background(Self.garminBlue, in: RoundedRectangle(cornerRadius: 8))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Garmin Connect").font(.headline)
+                    if uploads.garminConnected {
+                        Label("Connecté", systemImage: "checkmark.circle.fill")
+                            .font(.caption).foregroundStyle(.green)
+                    } else {
+                        Text("Non connecté").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .lineLimit(1)
+                Spacer(minLength: 8)
+                if busy {
+                    ProgressView().controlSize(.small)
+                } else if uploads.garminConnected {
+                    Button("Déconnecter") {
+                        uploads.garmin.disconnect()
+                        uploads.refreshAccounts()
+                    }
+                    .fixedSize()
+                } else {
+                    Button("Connecter Garmin") { showLogin = true }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Self.garminBlue)
+                        .fixedSize()
+                }
             }
-            if !uploads.strava.hasCredentials {
-                stravaKeysMissing
-            }
+            .padding(10)
+            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
 
-            AccountRow(name: "Garmin", icon: "applewatch", tint: Self.garminBlue,
-                       connected: uploads.garminConnected, detail: nil,
-                       busy: garminBusy, enabled: true,
-                       connect: { showGarminLogin = true },
-                       disconnect: {
-                           uploads.garmin.disconnect()
-                           uploads.refreshAccounts()
-                       })
-            if !compact, uploads.garminConnected {
-                Toggle("Envoyer automatiquement sur Garmin après chaque sortie", isOn: $garminAuto)
-                    .padding(.leading, 4)
+            if !compact {
+                if uploads.garminConnected {
+                    Toggle("Envoyer automatiquement sur Garmin après chaque sortie", isOn: $garminAuto)
+                        .padding(.leading, 4)
+                }
+                Label {
+                    Text("**Pour Strava** : dans Garmin Connect, ouvre Paramètres › Applications connectées › Strava. Tes sorties y seront ensuite transmises automatiquement.")
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "arrow.triangle.branch")
+                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            } else if uploads.garminConnected {
+                Text("Envoi automatique vers Garmin, puis Strava via Garmin Connect.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if let error {
                 Text(error).font(.callout).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
         }
-        .sheet(isPresented: $showGarminLogin) {
+        .sheet(isPresented: $showLogin) {
             GarminLoginSheet { ticket in
-                showGarminLogin = false
-                Task { await connectGarmin(ticket: ticket) }
+                showLogin = false
+                Task { await connect(ticket: ticket) }
             }
         }
     }
 
-    @ViewBuilder private var stravaKeysMissing: some View {
-        if compact {
-            Text("Strava : clés de l'application absentes (voir le README).")
-                .font(.caption).foregroundStyle(.secondary)
-        } else {
-            DisclosureGroup("Clés de l'application Strava (développeur)") {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Cette version a été compilée sans clés Strava. Saisis celles de ton application (strava.com/settings/api).")
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    TextField("", text: $customClientID, prompt: Text("Client ID")).labelsHidden()
-                    SecureField("", text: $customClientSecret, prompt: Text("Client Secret")).labelsHidden()
-                    Button("Enregistrer") {
-                        uploads.strava.clientID = customClientID
-                        uploads.strava.clientSecret = customClientSecret
-                        uploads.refreshAccounts()
-                    }
-                    .disabled(customClientID.isEmpty || customClientSecret.isEmpty)
-                }
-                .textFieldStyle(.roundedBorder)
-                .padding(.top, 4)
-            }
-            .font(.callout)
-        }
-    }
-
-    private func connectStrava() async {
-        stravaBusy = true
+    private func connect(ticket: String) async {
+        busy = true
         error = nil
-        defer { stravaBusy = false }
-        do {
-            let callback = try await webAuth.authenticate(using: try uploads.strava.authorizationURL(),
-                                                          callbackURLScheme: StravaClient.callbackScheme,
-                                                          preferredBrowserSession: .ephemeral)
-            try await uploads.strava.completeAuthorization(callback: callback)
-            uploads.refreshAccounts()
-        } catch ASWebAuthenticationSessionError.canceledLogin {
-            // Fenêtre fermée par l'utilisateur.
-        } catch {
-            self.error = "Strava : \(error.localizedDescription)"
-        }
-    }
-
-    private func connectGarmin(ticket: String) async {
-        garminBusy = true
-        error = nil
-        defer { garminBusy = false }
+        defer { busy = false }
         do {
             try await uploads.garmin.connect(ticket: ticket)
             uploads.refreshAccounts()
         } catch {
             self.error = "Garmin : \(error.localizedDescription)"
         }
-    }
-}
-
-private struct AccountRow: View {
-    let name: String
-    let icon: String
-    let tint: Color
-    let connected: Bool
-    let detail: String?
-    let busy: Bool
-    let enabled: Bool
-    let connect: () -> Void
-    let disconnect: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(.white)
-                .frame(width: 34, height: 34)
-                .background(tint, in: RoundedRectangle(cornerRadius: 8))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.headline)
-                if connected {
-                    Label(detail ?? "Connecté", systemImage: "checkmark.circle.fill")
-                        .font(.caption).foregroundStyle(.green)
-                } else {
-                    Text("Non connecté").font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            .lineLimit(1)
-            Spacer(minLength: 8)
-            if busy {
-                ProgressView().controlSize(.small)
-            } else if connected {
-                Button("Déconnecter", action: disconnect).fixedSize()
-            } else {
-                Button("Connecter \(name)", action: connect)
-                    .buttonStyle(.borderedProminent)
-                    .tint(tint)
-                    .fixedSize()
-                    .disabled(!enabled)
-            }
-        }
-        .padding(10)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
     }
 }
 

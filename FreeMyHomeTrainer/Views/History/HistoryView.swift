@@ -97,7 +97,7 @@ private struct ActivityDetailView: View {
         .confirmationDialog("Supprimer cette sortie ?", isPresented: $confirmDelete) {
             Button("Supprimer", role: .destructive, action: onDelete)
         } message: {
-            Text("Elle restera sur Strava / Garmin si elle y a été envoyée.")
+            Text("Elle restera sur Garmin Connect et Strava si elle y a été envoyée.")
         }
     }
 
@@ -200,7 +200,7 @@ struct ActivityStatsGrid: View {
     }
 }
 
-/// État des envois Strava / Garmin, avec relance et export manuel du .FIT.
+/// État de l'envoi Garmin (→ Strava), avec relance et export manuel du .FIT.
 struct UploadStatusView: View {
     let activity: ActivityRecord
     @Environment(UploadCenter.self) private var uploads
@@ -227,12 +227,6 @@ struct UploadStatusView: View {
     }
 
     @ViewBuilder private var services: some View {
-        service("Strava", status: activity.stravaStatus, connected: uploads.stravaConnected) {
-            Task { await uploads.uploadToStrava(activity, context: context) }
-        }
-        if let id = activity.stravaActivityID, activity.stravaStatus == .done {
-            Link("Voir sur Strava", destination: URL(string: "https://www.strava.com/activities/\(id)")!)
-        }
         service("Garmin", status: activity.garminStatus, connected: uploads.garminConnected) {
             Task { await uploads.uploadToGarmin(activity, context: context) }
         }

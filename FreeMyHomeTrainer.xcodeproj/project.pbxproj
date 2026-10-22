@@ -33,7 +33,6 @@
 		CC3120580A07A891207C3F1E /* FreeMyHomeTrainerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDA9852FB01644CBB5AE1C38 /* FreeMyHomeTrainerTests.swift */; };
 		D20A3650EF1CE02A0F07BC1C /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109712EFD67599863D69D861 /* HistoryView.swift */; };
 		D8FEE126465BB8D0EAA04723 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F76FA204368AE0929BEDBCC0 /* LibraryView.swift */; };
-		DE8D461A4DDE85507003AE51 /* StravaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B412674403FE4851FCFA5D5C /* StravaClient.swift */; };
 		E25AA9039A490A0E1F12A6AF /* GarminClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F6E3CB37160804060EB7AF0 /* GarminClient.swift */; };
 		F366C07C9C76EE354FD355F6 /* BlockEditBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64D27D8B13E9D37C32DA2AD2 /* BlockEditBar.swift */; };
 /* End PBXBuildFile section */
@@ -75,7 +74,6 @@
 		A98B80760D196779B17F585A /* FreeMyHomeTrainer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FreeMyHomeTrainer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AC5C6043E92773BA6BDA051D /* FreeMyHomeTrainerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FreeMyHomeTrainerApp.swift; sourceTree = "<group>"; };
 		ACE0A0A76F0405938A09ADD9 /* ActivitySaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitySaver.swift; sourceTree = "<group>"; };
-		B412674403FE4851FCFA5D5C /* StravaClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StravaClient.swift; sourceTree = "<group>"; };
 		BB8394D2A40CB6C42A11EEC6 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		C111AB9282A975E007065D14 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		C255B47FF28AA8FADE8E9568 /* FreeMyHomeTrainer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FreeMyHomeTrainer.entitlements; sourceTree = "<group>"; };
@@ -215,7 +213,6 @@
 				644C7DDB4B9C2D789D3F8471 /* FITEncoder.swift */,
 				4F6E3CB37160804060EB7AF0 /* GarminClient.swift */,
 				C111AB9282A975E007065D14 /* Keychain.swift */,
-				B412674403FE4851FCFA5D5C /* StravaClient.swift */,
 				9FC6EA4601DAA49D08E8F024 /* UploadCenter.swift */,
 			);
 			path = Export;
@@ -391,7 +388,6 @@
 				60DF425AFA23E894C641012F /* RideView.swift in Sources */,
 				688B90E8F1362EA92D9C6B46 /* SettingsView.swift in Sources */,
 				5B41FBC08B42349E01DB5D01 /* SimulatedTrainer.swift in Sources */,
-				DE8D461A4DDE85507003AE51 /* StravaClient.swift in Sources */,
 				5C80F252E2BF580A4342CD2B /* UploadCenter.swift in Sources */,
 				9B7C4CD82C22DA079EB9E301 /* Workout.swift in Sources */,
 				9F4D049B1256E88E6E810718 /* WorkoutBlockTree.swift in Sources */,

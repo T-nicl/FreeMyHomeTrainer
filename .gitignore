@@ -4,5 +4,5 @@ DerivedData/
 xcuserdata/
 *.xcuserstate
 
-# Réglages personnels (signature, clés Strava)
+# Réglages personnels (signature)
 Config/Local.xcconfig

@@ -25,12 +25,7 @@ targets:
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
         LSApplicationCategoryType: public.app-category.healthcare-fitness
-        StravaClientID: $(STRAVA_CLIENT_ID)
-        StravaClientSecret: $(STRAVA_CLIENT_SECRET)
         NSBluetoothAlwaysUsageDescription: "FreeMyHomeTrainer se connecte en Bluetooth à ton home trainer et à ta ceinture cardio."
-        CFBundleURLTypes:
-          - CFBundleURLName: fr.timothenicole.FreeMyHomeTrainer.oauth
-            CFBundleURLSchemes: [freemyhometrainer]
     entitlements:
       path: FreeMyHomeTrainer/Support/FreeMyHomeTrainer.entitlements
       properties:

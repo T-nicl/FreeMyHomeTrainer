@@ -59,9 +59,7 @@ final class AppState {
 enum Settings {
     static let ftpKey = "ftp"
     static let weightKey = "weightKg"
-    static let stravaAutoUploadKey = "stravaAutoUpload"
     static let garminAutoUploadKey = "garminAutoUpload"
-    static let stravaClientIDKey = "stravaClientID"
     static let seededKey = "didSeedSampleWorkouts"
 
     static var ftp: Int {

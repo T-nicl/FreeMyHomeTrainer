@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-/// Stockage des secrets (jetons Strava/Garmin, secret client) dans le Trousseau.
+/// Stockage des secrets (jetons Garmin) dans le Trousseau.
 enum Keychain {
     private static let service = "fr.timothenicole.FreeMyHomeTrainer"
 
@@ -66,5 +66,29 @@ struct HTTPError: LocalizedError {
         guard accept.contains(status) else {
             throw HTTPError(status: status, body: String(decoding: data, as: UTF8.self))
         }
+    }
+}
+
+enum FormEncoding {
+    /// Encodage RFC 3986 (caractères non réservés uniquement), utilisé aussi pour OAuth 1.
+    static func percentEncode(_ s: String) -> String {
+        let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+        return s.addingPercentEncoding(withAllowedCharacters: unreserved) ?? s
+    }
+
+    static func encode(_ params: [String: String]) -> String {
+        params.sorted { $0.key < $1.key }
+            .map { "\(percentEncode($0.key))=\(percentEncode($0.value))" }
+            .joined(separator: "&")
+    }
+
+    static func decode(_ string: String) -> [String: String] {
+        var out: [String: String] = [:]
+        for pair in string.split(separator: "&") {
+            let parts = pair.split(separator: "=", maxSplits: 1).map(String.init)
+            guard let key = parts.first?.removingPercentEncoding else { continue }
+            out[key] = parts.count > 1 ? (parts[1].replacingOccurrences(of: "+", with: " ").removingPercentEncoding ?? "") : ""
+        }
+        return out
     }
 }
