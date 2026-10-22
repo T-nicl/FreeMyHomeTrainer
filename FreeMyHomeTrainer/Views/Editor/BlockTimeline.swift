@@ -199,6 +199,9 @@ private struct BlockBar: View {
             }
             .frame(width: width, height: height)
             .overlay(alignment: .topLeading) { resizeHandles }
+            .overlay(alignment: hover == .after ? .trailing : .leading) {
+                if hover == .before || hover == .after { InsertionMarker() }
+            }
 
             // Hauteurs fixes : un libellé rétréci ne doit pas décaler la barre verticalement.
             Text(Format.duration(duration))
@@ -348,6 +351,16 @@ struct RampShape: Shape {
     }
 }
 
+/// Repère discret indiquant où le bloc glissé sera déposé.
+private struct InsertionMarker: View {
+    var body: some View {
+        Capsule()
+            .fill(Color.accentColor.opacity(0.45))
+            .frame(width: 2)
+            .padding(.vertical, 12)
+    }
+}
+
 // MARK: - Groupe de répétition
 
 private struct RepeatGroup<Content: View>: View {
@@ -378,6 +391,9 @@ private struct RepeatGroup<Content: View>: View {
         .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.06)))
         .overlay(RoundedRectangle(cornerRadius: 10)
             .strokeBorder(borderColor, style: StrokeStyle(lineWidth: 2, dash: hover == .inside ? [] : [5, 4])))
+        .overlay(alignment: hover == .after ? .trailing : .leading) {
+            if hover == .before || hover == .after { InsertionMarker() }
+        }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .contentShape(Rectangle())
         .onTapGesture(perform: onSelect)

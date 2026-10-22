@@ -69,8 +69,8 @@ struct WorkoutEditorView: View {
     private var palette: some View {
         HStack(spacing: 8) {
             Text("Ajouter :").foregroundStyle(.secondary)
-            PaletteItem(title: "Constant", icon: "rectangle.fill", kind: .steady) { add(newBlock(.steady)) }
-            PaletteItem(title: "Rampe", icon: "chart.line.uptrend.xyaxis", kind: .ramp) { add(newBlock(.ramp)) }
+            // Un bloc est constant à sa création ; il devient une rampe via la barre d'édition.
+            PaletteItem(title: "Bloc", icon: "rectangle.fill", kind: .steady) { add(newBlock(.steady)) }
             PaletteItem(title: "Répétition", icon: "repeat", kind: .repeats) { add(newBlock(.repeats)) }
             Spacer(minLength: 0)
         }
