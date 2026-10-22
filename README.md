@@ -22,7 +22,7 @@ et Garmin Connect.
 
 Prérequis : un Mac sous macOS 15 ou plus récent, et [Xcode](https://apps.apple.com/app/xcode/id497799835) 16 ou plus.
 
-1. Récupère le code : `git clone https://github.com/<compte>/FreeMyHomeTrainer.git`
+1. Récupère le code : `git clone https://github.com/T-nicl/FreeMyHomeTrainer.git`
 2. Ouvre `FreeMyHomeTrainer.xcodeproj` dans Xcode.
 3. Choisis le schéma **FreeMyHomeTrainer** et lance avec **⌘R**.
 
