@@ -53,6 +53,9 @@ struct BlockTimeline: View {
     /// Emplacement de dépôt survolé, partagé par toute la frise : un seul repère à la fois,
     /// effacé au dépôt, à l'annulation du glisser ou dès que la séance change.
     @State private var dropHover: (id: WorkoutBlock.ID, side: HoverSide)?
+    /// Juste après un dépôt, macOS envoie encore un « survol » au bloc qui se retrouve sous
+    /// le pointeur pendant la réorganisation : on l'ignore pour ne pas réafficher le repère.
+    @State private var ignoreHoverUntil = Date.distantPast
 
     static let barHeight: CGFloat = 150
     /// Espace entre deux blocs ; le repère d'insertion est dessiné en son milieu.
@@ -96,10 +99,18 @@ struct BlockTimeline: View {
         }
     }
 
+    /// Fin d'un dépôt : efface le repère et ignore les survols tardifs pendant la réorganisation.
+    private func endDrop() {
+        dropHover = nil
+        ignoreHoverUntil = Date().addingTimeInterval(0.5)
+    }
+
     private func hoverBinding(for id: WorkoutBlock.ID) -> Binding<HoverSide?> {
         Binding(get: { dropHover?.id == id ? dropHover?.side : nil },
                 set: { side in
                     if let side {
+                        let dragging = NSEvent.pressedMouseButtons & 1 != 0
+                        guard dragging, Date() >= ignoreHoverUntil else { return }
                         dropHover = (id, side)
                     } else if dropHover?.id == id {
                         dropHover = nil
@@ -155,7 +166,7 @@ struct BlockTimeline: View {
         BlockBar(block: block, ftp: ftp, maxWatts: maxWatts, scale: scale,
                  isSelected: selectedID == block.id,
                  hover: hoverBinding(for: block.id),
-                 clearHover: { dropHover = nil },
+                 clearHover: endDrop,
                  onSelect: { selectedID = block.id },
                  onUpdate: { updated in
                      selectedID = updated.id
@@ -173,7 +184,7 @@ struct BlockTimeline: View {
     private func repeatGroup(_ block: WorkoutBlock, depth: Int, scale: CGFloat) -> some View {
         RepeatGroup(block: block, depth: depth, isSelected: selectedID == block.id,
                     hover: hoverBinding(for: block.id),
-                    clearHover: { dropHover = nil },
+                    clearHover: endDrop,
                     onSelect: { selectedID = block.id },
                     onChangeCount: { onChangeCount(block.id, $0) },
                     onDrop: onDrop) {
