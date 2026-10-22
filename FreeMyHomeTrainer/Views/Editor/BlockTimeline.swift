@@ -49,6 +49,10 @@ struct BlockTimeline: View {
     /// Bloc modifié en tirant sur ses bords.
     let onUpdate: (WorkoutBlock) -> Void
 
+    /// Emplacement de dépôt survolé, partagé par toute la frise : un seul repère à la fois,
+    /// effacé au dépôt, à l'annulation du glisser ou dès que la séance change.
+    @State private var dropHover: (id: WorkoutBlock.ID, side: HoverSide)?
+
     static let barHeight: CGFloat = 150
     static let minBarWidth: CGFloat = 54
     private static let groupPadding: CGFloat = 8
@@ -81,6 +85,18 @@ struct BlockTimeline: View {
         .frame(height: Self.barHeight + 100)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
         .overlay(alignment: .bottomLeading) { ftpLine }
+        .onChange(of: blocks) { dropHover = nil }
+    }
+
+    private func hoverBinding(for id: WorkoutBlock.ID) -> Binding<HoverSide?> {
+        Binding(get: { dropHover?.id == id ? dropHover?.side : nil },
+                set: { side in
+                    if let side {
+                        dropHover = (id, side)
+                    } else if dropHover?.id == id {
+                        dropHover = nil
+                    }
+                })
     }
 
     /// Distance entre le bas de la frise et le bas des barres :
@@ -130,6 +146,7 @@ struct BlockTimeline: View {
     private func bar(_ block: WorkoutBlock, scale: CGFloat) -> some View {
         BlockBar(block: block, ftp: ftp, maxWatts: maxWatts, scale: scale,
                  isSelected: selectedID == block.id,
+                 hover: hoverBinding(for: block.id),
                  onSelect: { selectedID = block.id },
                  onUpdate: { updated in
                      selectedID = updated.id
@@ -140,6 +157,7 @@ struct BlockTimeline: View {
 
     private func repeatGroup(_ block: WorkoutBlock, scale: CGFloat) -> some View {
         RepeatGroup(block: block, isSelected: selectedID == block.id,
+                    hover: hoverBinding(for: block.id),
                     onSelect: { selectedID = block.id },
                     onChangeCount: { onChangeCount(block.id, $0) },
                     onDrop: onDrop) {
@@ -167,10 +185,10 @@ private struct BlockBar: View {
     /// Points par seconde (pour convertir un glissement horizontal en durée).
     let scale: CGFloat
     let isSelected: Bool
+    @Binding var hover: HoverSide?
     let onSelect: () -> Void
     let onUpdate: (WorkoutBlock) -> Void
     let onDrop: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
-    @State private var hover: HoverSide?
     /// Valeurs provisoires pendant un redimensionnement (validées au relâchement).
     @State private var draftDuration: TimeInterval?
     @State private var draftStart: Double?
@@ -355,7 +373,7 @@ struct RampShape: Shape {
 private struct InsertionMarker: View {
     var body: some View {
         Capsule()
-            .fill(Color.accentColor.opacity(0.45))
+            .fill(Color.gray.opacity(0.6))
             .frame(width: 2)
             .padding(.vertical, 12)
     }
@@ -366,11 +384,11 @@ private struct InsertionMarker: View {
 private struct RepeatGroup<Content: View>: View {
     let block: WorkoutBlock
     let isSelected: Bool
+    @Binding var hover: HoverSide?
     let onSelect: () -> Void
     let onChangeCount: (Int) -> Void
     let onDrop: @MainActor (BlockDragPayload, BlockDropTarget) -> Void
     @ViewBuilder let content: Content
-    @State private var hover: HoverSide?
     @State private var width: CGFloat = 200
 
     var body: some View {
