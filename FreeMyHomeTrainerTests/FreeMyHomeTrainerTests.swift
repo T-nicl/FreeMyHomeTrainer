@@ -60,12 +60,23 @@ struct WorkoutModelTests {
         func rating(_ name: String) -> Double {
             WorkoutTimeline(workout: Workout.samples.first { $0.name.hasPrefix(name) }!, ftp: 250).intensityRating
         }
-        #expect(rating("Endurance") == 2)
-        #expect(rating("Sweet Spot") == 3)
+        #expect(rating("Endurance") == 1.5)
+        #expect(rating("Sweet Spot") == 2.5)
         #expect(rating("VO2") == 4)
-        #expect(IntensityRating.value(intensityFactor: 0.4, tss: 0) == 1)     // borne basse
-        #expect(IntensityRating.value(intensityFactor: 1.3, tss: 200) == 5)   // borne haute
-        #expect(IntensityRating.value(intensityFactor: 0.9, tss: 87) == 4.5)  // demi-point
+    }
+
+    @Test func intensityRatingCalibration() {
+        // Exemples donnés par l'utilisateur, FTP 245 W.
+        func steady(_ watts: Int, minutes: Double) -> Double {
+            let w = Workout(name: "x", blocks: [.steady(minutes * 60, .watts(watts))])
+            return WorkoutTimeline(workout: w, ftp: 245).intensityRating
+        }
+        #expect(steady(170, minutes: 45) == 1.5)
+        #expect(steady(250, minutes: 45) == 5)
+        #expect(steady(120, minutes: 45) == 1)
+        // La durée pèse au-delà d'une heure, et un peu en moins sous 20 minutes.
+        #expect(steady(170, minutes: 180) > steady(170, minutes: 60))
+        #expect(steady(200, minutes: 15) < steady(200, minutes: 45))
     }
 
     @Test func powerZones() {

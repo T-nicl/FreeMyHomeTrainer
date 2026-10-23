@@ -10,6 +10,8 @@ final class SavedWorkout {
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var payload: Data = Data()
+    /// Position choisie par l'utilisateur dans la liste des séances (glisser pour réordonner).
+    var sortOrder: Int = 0
 
     init(_ workout: Workout) {
         self.name = workout.name

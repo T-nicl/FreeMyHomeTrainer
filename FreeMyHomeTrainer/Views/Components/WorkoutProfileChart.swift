@@ -14,7 +14,7 @@ extension PowerZone {
     }
 }
 
-/// Profil de séance : barres colorées par zone, avec en option la puissance réelle
+/// Profil de séance : blocs colorés par zone, avec en option la puissance réelle
 /// et un curseur de progression (pendant une sortie).
 struct WorkoutProfileChart: View {
     let timeline: WorkoutTimeline
@@ -25,37 +25,10 @@ struct WorkoutProfileChart: View {
     /// Trait de la FTP (par défaut : affiché avec les axes).
     var showFTPLine: Bool?
 
-    private struct Bar: Identifiable {
-        let id: Int
-        let start, end, watts: Double
-        let zone: PowerZone
-        let isRampStep: Bool
-    }
-
-    /// Les rampes sont découpées en marches pour être dessinées avec des rectangles.
-    private var bars: [Bar] {
-        var out: [Bar] = []
-        for s in timeline.segments {
-            let steps = s.isRamp ? max(min(Int(s.duration / 10), 40), 2) : 1
-            let dt = s.duration / Double(steps)
-            for k in 0..<steps {
-                let t0 = s.start + Double(k) * dt
-                let w = s.watts(at: t0 + dt / 2)
-                out.append(Bar(id: out.count, start: t0, end: t0 + dt, watts: w,
-                               zone: PowerZone(watts: w, ftp: timeline.ftp), isRampStep: s.isRamp))
-            }
-        }
-        return out
-    }
-
     var body: some View {
         Chart {
-            ForEach(bars) { bar in
-                RectangleMark(xStart: .value("Début", bar.start), xEnd: .value("Fin", bar.end),
-                              yStart: .value("0", 0), yEnd: .value("Watts", bar.watts))
-                    .foregroundStyle(bar.zone.color.opacity(isHighlighted(bar) ? 1 : dimmedOpacity))
-                    .cornerRadius(bar.isRampStep ? 0 : 3)
-            }
+            // Marque invisible : garantit l'affichage des échelles même sans autre marque.
+            RuleMark(y: .value("Base", 0)).foregroundStyle(.clear)
             if timeline.ftp > 0, showFTPLine ?? showAxes {
                 RuleMark(y: .value("FTP", timeline.ftp))
                     .foregroundStyle(.secondary.opacity(0.6))
@@ -89,13 +62,47 @@ struct WorkoutProfileChart: View {
             }
         }
         .chartYAxis(showAxes ? .automatic : .hidden)
+        // Les blocs sont dessinés comme dans l'éditeur (une rampe = une pente continue, coins
+        // arrondis), sous les marques du graphique, à l'échelle du graphique.
+        .chartBackground { proxy in
+            GeometryReader { geo in
+                if let plotFrame = proxy.plotFrame {
+                    let plot = geo[plotFrame]
+                    ForEach(Array(timeline.segments.enumerated()), id: \.offset) { _, segment in
+                        segmentView(segment, proxy: proxy, plot: plot)
+                    }
+                }
+            }
+        }
     }
+
+    @ViewBuilder
+    private func segmentView(_ s: WorkoutSegment, proxy: ChartProxy, plot: CGRect) -> some View {
+        if let x0 = proxy.position(forX: s.start), let x1 = proxy.position(forX: s.end),
+           let yStart = proxy.position(forY: s.startWatts), let yEnd = proxy.position(forY: s.endWatts),
+           let base = proxy.position(forY: 0.0) {
+            // Un point d'écart entre deux blocs pour les distinguer.
+            let inset: CGFloat = x1 - x0 > 3 ? 0.5 : 0
+            let width = max(x1 - x0 - 2 * inset, 0.5)
+            let height = max(base - min(yStart, yEnd), 1)
+            let shape = RampShape(start: (base - yStart) / height, end: (base - yEnd) / height,
+                                  cornerRadius: showAxes ? 3 : 2)
+            shape
+                .fill(LinearGradient(colors: [zone(s.startWatts), zone(s.endWatts)],
+                                     startPoint: .leading, endPoint: .trailing))
+                .opacity(isHighlighted(s) ? 1 : dimmedOpacity)
+                .frame(width: width, height: height)
+                .position(x: plot.minX + x0 + inset + width / 2, y: plot.minY + base - height / 2)
+        }
+    }
+
+    private func zone(_ watts: Double) -> Color { PowerZone(watts: watts, ftp: timeline.ftp).color }
 
     private var dimmedOpacity: Double { highlightedRange == nil && progress == nil ? 1 : 0.4 }
 
-    private func isHighlighted(_ bar: Bar) -> Bool {
-        if let r = highlightedRange { return bar.start >= r.lowerBound && bar.end <= r.upperBound }
-        if let p = progress { return bar.start <= p }
+    private func isHighlighted(_ s: WorkoutSegment) -> Bool {
+        if let r = highlightedRange { return s.start >= r.lowerBound && s.end <= r.upperBound }
+        if let p = progress { return s.start <= p }
         return true
     }
 

@@ -60,7 +60,9 @@ struct RideView: View {
 private struct RideSetupView: View {
     @Environment(AppState.self) private var appState
     @Environment(DeviceManager.self) private var devices
-    @Query(sort: \SavedWorkout.name) private var workouts: [SavedWorkout]
+    /// Même ordre que la liste des séances.
+    @Query(sort: [SortDescriptor(\SavedWorkout.sortOrder), SortDescriptor(\SavedWorkout.createdAt, order: .reverse)])
+    private var workouts: [SavedWorkout]
     @AppStorage(Settings.ftpKey) private var ftp = 200
     let onStart: (Workout?) -> Void
 
