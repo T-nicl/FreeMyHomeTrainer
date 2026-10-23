@@ -251,7 +251,8 @@ private struct BlockBar: View {
                     .onChanged { value in
                         guard scale > 0 else { return }
                         let raw = block.duration + value.translation.width / scale
-                        draftDuration = max((raw / 15).rounded() * 15, 15)   // pas de 15 s
+                        let snapped = (raw / 15).rounded() * 15                // pas de 15 s
+                        draftDuration = min(max(snapped, 15), WorkoutLimits.maxBlockDuration)
                     }
                     .onEnded { _ in commit() })
     }
@@ -276,10 +277,10 @@ private struct BlockBar: View {
         var updated = block
         if let d = draftDuration { updated.duration = d }
         if let w = draftStart {
-            updated.target = .watts(Int(w.rounded()))
+            updated.target = .watts(Int(safe: w))
             if block.kind != .ramp { updated.endTarget = updated.target }
         }
-        if let w = draftEnd { updated.endTarget = .watts(Int(w.rounded())) }
+        if let w = draftEnd { updated.endTarget = .watts(Int(safe: w)) }
         draftDuration = nil
         draftStart = nil
         draftEnd = nil
@@ -289,8 +290,8 @@ private struct BlockBar: View {
     private func zoneColor(_ watts: Double) -> Color { PowerZone(watts: watts, ftp: ftp).color }
 
     private var powerLabel: String {
-        block.kind == .ramp ? "\(Int(startWatts.rounded()))→\(Int(endWatts.rounded())) W"
-                            : "\(Int(startWatts.rounded())) W"
+        block.kind == .ramp ? "\(Int(safe: startWatts))→\(Int(safe: endWatts)) W"
+                            : "\(Int(safe: startWatts)) W"
     }
 }
 

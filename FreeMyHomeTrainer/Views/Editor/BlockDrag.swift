@@ -194,7 +194,7 @@ private struct DragGhost: View {
         switch block.kind {
         case .repeats: return "× \(block.count) · \(Format.duration(block.totalDuration))"
         case .steady, .ramp:
-            return "\(Format.duration(block.duration)) · \(Int(block.target.watts(ftp: ftp).rounded())) W"
+            return "\(Format.duration(block.duration)) · \(Int(safe: block.target.watts(ftp: ftp))) W"
         }
     }
 

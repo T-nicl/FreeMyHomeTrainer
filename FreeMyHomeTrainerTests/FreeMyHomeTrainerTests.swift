@@ -196,6 +196,9 @@ struct WorkoutModelTests {
         #expect(try p.parse("1:00:00") == 3600)
         #expect(throws: (any Error).self) { try p.parse("abc") }
         #expect(throws: (any Error).self) { try p.parse("0") }
+        #expect(throws: (any Error).self) { try p.parse("99999999999999999") }   // pas de débordement
+        #expect(throws: (any Error).self) { try p.parse("99999999999999999:00:00") }
+        #expect(throws: (any Error).self) { try p.parse("25:00:00") }            // plus de 24 h
         #expect(DurationFormat().format(630) == "10:30")
     }
 }

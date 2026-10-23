@@ -19,7 +19,8 @@ final class SavedWorkout {
     }
 
     var workout: Workout {
-        get { (try? Workout.from(json: payload)) ?? Workout(name: name) }
+        // Ramenée dans les limites : une donnée enregistrée ne doit jamais figer ou planter l'app.
+        get { ((try? Workout.from(json: payload)) ?? Workout(name: name)).sanitized() }
         set {
             name = newValue.name
             payload = (try? newValue.jsonData()) ?? payload

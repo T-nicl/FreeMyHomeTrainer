@@ -209,11 +209,177 @@ enum WorkoutNaming {
         // « Séance 2 » déjà pris → on repart de « Séance » et on cherche le numéro suivant.
         var stem = base
         var number = 2
-        if let match = base.firstMatch(of: /^(.*\S) (\d+)$/), let n = Int(match.2) {
+        if let match = base.firstMatch(of: /^(.*\S) (\d{1,9})$/), let n = Int(match.2) {
             stem = String(match.1)
             number = n + 1
         }
         while taken.contains(key("\(stem) \(number)")) { number += 1 }
         return "\(stem) \(number)"
+    }
+}
+
+/// Limites d'une séance. Une séance venue de l'extérieur (JSON, LLM, ami) qui les dépasse est
+/// refusée (`importJSON`) ; une séance déjà enregistrée est ramenée dans les limites au
+/// chargement (`sanitized`), pour qu'aucune donnée ne puisse figer ou planter l'app.
+enum WorkoutLimits {
+    static let maxRepeatCount = 50
+    /// Niveaux d'imbrication des répétitions.
+    static let maxDepth = 4
+    /// Segments une fois les répétitions déroulées (filet de sécurité du déroulé).
+    static let maxSegments = 5_000
+    static let minBlockDuration: TimeInterval = 1
+    static let maxBlockDuration: TimeInterval = 24 * 3600
+    static let maxTotalDuration: TimeInterval = 24 * 3600
+    static let maxWatts = 2_500
+    static let maxFTPPercent = 1_000
+    /// Blocs et répétitions au total, avant déroulé.
+    static let maxNodes = 2_000
+    static let maxNameLength = 100
+    static let maxNotesLength = 5_000
+    /// Taille maximale d'un JSON importé.
+    static let maxImportBytes = 256_000
+}
+
+struct WorkoutValidationError: LocalizedError {
+    let message: String
+    var errorDescription: String? { message }
+}
+
+extension Int {
+    /// Conversion qui ne plante jamais : NaN → 0, valeurs infinies ou énormes bornées.
+    init(safe value: Double) {
+        guard value.isFinite else {
+            self = value.isNaN ? 0 : (value > 0 ? Int(Int32.max) : Int(Int32.min))
+            return
+        }
+        self = Int(Swift.min(Swift.max(value.rounded(), Double(Int32.min)), Double(Int32.max)))
+    }
+}
+
+extension Target {
+    fileprivate var isWithinLimits: Bool {
+        switch self {
+        case .watts(let w): (0...WorkoutLimits.maxWatts).contains(w)
+        case .ftpPercent(let p): (0...WorkoutLimits.maxFTPPercent).contains(p)
+        }
+    }
+
+    fileprivate var clamped: Target {
+        switch self {
+        case .watts(let w): .watts(Swift.min(Swift.max(w, 0), WorkoutLimits.maxWatts))
+        case .ftpPercent(let p): .ftpPercent(Swift.min(Swift.max(p, 0), WorkoutLimits.maxFTPPercent))
+        }
+    }
+
+    fileprivate var spoken: String {
+        switch self {
+        case .watts(let w): "\(w) W"
+        case .ftpPercent(let p): "\(p) % FTP"
+        }
+    }
+}
+
+extension Workout {
+    /// Séance venue de l'extérieur (JSON, LLM, ami) : décodée puis validée.
+    static func importJSON(_ data: Data) throws -> Workout {
+        guard data.count <= WorkoutLimits.maxImportBytes else {
+            throw WorkoutValidationError(message: "Fichier de séance trop volumineux (\(data.count / 1000) Ko, 256 Ko au maximum).")
+        }
+        let workout = try from(json: data)
+        try workout.validate()
+        return workout
+    }
+
+    /// Vérifie que la séance respecte `WorkoutLimits` ; sinon, erreur en français.
+    func validate() throws {
+        func fail(_ message: String) -> WorkoutValidationError { WorkoutValidationError(message: message) }
+        guard name.count <= WorkoutLimits.maxNameLength else {
+            throw fail("Nom de \(name.count) caractères : \(WorkoutLimits.maxNameLength) au maximum.")
+        }
+        guard notes.count <= WorkoutLimits.maxNotesLength else {
+            throw fail("Notes de \(notes.count) caractères : \(WorkoutLimits.maxNotesLength) au maximum.")
+        }
+        guard blocks.nodeCount <= WorkoutLimits.maxNodes else {
+            throw fail("Séance de \(blocks.nodeCount) blocs : \(WorkoutLimits.maxNodes) au maximum.")
+        }
+        var segments = 0.0
+
+        func check(_ blocks: [WorkoutBlock], depth: Int, multiplier: Double) throws {
+            for b in blocks {
+                switch b.kind {
+                case .steady, .ramp:
+                    guard b.duration.isFinite,
+                          (WorkoutLimits.minBlockDuration...WorkoutLimits.maxBlockDuration).contains(b.duration) else {
+                        throw fail("Bloc de \(Format.duration(b.duration)) : durée entre 1 s et 24 h.")
+                    }
+                    for t in b.kind == .ramp ? [b.target, b.endTarget] : [b.target] where !t.isWithinLimits {
+                        throw fail("Cible de \(t.spoken) : 0 à \(WorkoutLimits.maxWatts) W ou 0 à \(WorkoutLimits.maxFTPPercent) % FTP.")
+                    }
+                    segments += multiplier
+                case .repeats:
+                    guard (1...WorkoutLimits.maxRepeatCount).contains(b.count) else {
+                        throw fail("\(b.count) répétitions : \(WorkoutLimits.maxRepeatCount) au maximum.")
+                    }
+                    guard depth < WorkoutLimits.maxDepth else {
+                        throw fail("Répétitions imbriquées sur plus de \(WorkoutLimits.maxDepth) niveaux.")
+                    }
+                    guard b.producesSegments else {
+                        throw fail("Répétition vide : ajoute au moins un bloc dedans.")
+                    }
+                    try check(b.blocks, depth: depth + 1, multiplier: multiplier * Double(b.count))
+                }
+            }
+        }
+
+        try check(blocks, depth: 0, multiplier: 1)
+        guard segments <= Double(WorkoutLimits.maxSegments) else {
+            throw fail("Séance trop découpée : \(Int(safe: segments)) blocs une fois déroulée, \(WorkoutLimits.maxSegments) au maximum.")
+        }
+        guard totalDuration <= WorkoutLimits.maxTotalDuration else {
+            throw fail("Séance de \(Format.duration(totalDuration)) : 24 h au maximum.")
+        }
+    }
+
+    /// Copie ramenée dans les limites — pour une séance déjà enregistrée, qu'on ne veut ni
+    /// refuser ni laisser figer l'app : durées et cibles bornées, blocs de durée nulle ou
+    /// invalide retirés, répétitions trop profondes aplaties, répétitions vides retirées,
+    /// nombre de blocs, nom et notes plafonnés.
+    func sanitized() -> Workout {
+        var budget = WorkoutLimits.maxNodes
+
+        func clean(_ blocks: [WorkoutBlock], depth: Int) -> [WorkoutBlock] {
+            var out: [WorkoutBlock] = []
+            for b in blocks where budget > 0 {
+                switch b.kind {
+                case .steady, .ramp:
+                    guard b.duration.isFinite, b.duration > 0 else { continue }
+                    var c = b
+                    c.duration = Swift.min(Swift.max(b.duration, WorkoutLimits.minBlockDuration),
+                                           WorkoutLimits.maxBlockDuration)
+                    c.target = b.target.clamped
+                    c.endTarget = b.endTarget.clamped
+                    budget -= 1
+                    out.append(c)
+                case .repeats:
+                    // Au-delà de la profondeur maximale, on garde les blocs sans la répétition.
+                    guard depth < WorkoutLimits.maxDepth else {
+                        out += clean(b.blocks.leaves, depth: depth)
+                        continue
+                    }
+                    budget -= 1
+                    var c = b
+                    c.count = Swift.min(Swift.max(b.count, 1), WorkoutLimits.maxRepeatCount)
+                    c.blocks = clean(b.blocks, depth: depth + 1)
+                    if !c.blocks.isEmpty { out.append(c) }
+                }
+            }
+            return out
+        }
+
+        var copy = self
+        copy.name = String(name.prefix(WorkoutLimits.maxNameLength))
+        copy.notes = String(notes.prefix(WorkoutLimits.maxNotesLength))
+        copy.blocks = clean(blocks, depth: 0)
+        return copy
     }
 }

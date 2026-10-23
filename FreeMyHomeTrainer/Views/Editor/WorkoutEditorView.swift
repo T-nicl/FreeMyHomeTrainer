@@ -28,6 +28,7 @@ struct WorkoutEditorView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header(timeline)
                 SanityBanner(warnings: WorkoutSanity.warnings(for: draft, ftp: ftp))
+                SanityBanner(warnings: limitWarnings, title: "Cette séance dépasse les limites de l'app")
                 WorkoutProfileChart(timeline: timeline, highlightedRange: selectedRange, showAxes: false, showFTPLine: true)
                     .frame(height: 56)
                 palette
@@ -127,6 +128,16 @@ struct WorkoutEditorView: View {
     }
 
     // MARK: - Édition
+
+    /// Mêmes règles qu'à l'import : une séance construite ici doit pouvoir être partagée.
+    private var limitWarnings: [String] {
+        do {
+            try draft.validate()
+            return []
+        } catch {
+            return [error.localizedDescription]
+        }
+    }
 
     private var uniqueName: String { WorkoutNaming.unique(draft.name, among: otherNames) }
 

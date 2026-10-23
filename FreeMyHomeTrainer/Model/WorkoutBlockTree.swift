@@ -104,6 +104,15 @@ extension WorkoutBlock {
         return copy
     }
 
+    /// Vrai si le bloc produit au moins un segment une fois déroulé (une répétition vide, ou
+    /// ne contenant que des répétitions vides, n'en produit aucun).
+    var producesSegments: Bool {
+        switch kind {
+        case .steady, .ramp: duration > 0
+        case .repeats: count > 0 && blocks.contains { $0.producesSegments }
+        }
+    }
+
     /// Durée affichée dans l'éditeur : une seule itération pour une répétition.
     var displayDuration: TimeInterval {
         kind == .repeats ? blocks.reduce(0) { $0 + $1.displayDuration } : duration
@@ -118,6 +127,9 @@ extension Array where Element == WorkoutBlock {
 
     /// Nombre de répétitions, à toutes les profondeurs.
     var repeatCount: Int { reduce(0) { $0 + ($1.kind == .repeats ? 1 + $1.blocks.repeatCount : 0) } }
+
+    /// Nombre total de blocs et de répétitions, avant déroulé.
+    var nodeCount: Int { reduce(0) { $0 + 1 + $1.blocks.nodeCount } }
 
     /// Profondeur d'imbrication des répétitions (0 = aucune répétition).
     var nestingDepth: Int { map { $0.kind == .repeats ? 1 + $0.blocks.nestingDepth : 0 }.max() ?? 0 }

@@ -16,7 +16,7 @@ enum FITEncoder {
     static let epochOffset: TimeInterval = 631_065_600
 
     static func fitTime(_ date: Date) -> UInt64 {
-        UInt64(max(date.timeIntervalSince1970 - epochOffset, 0).rounded())
+        fit(date.timeIntervalSince1970 - epochOffset)
     }
 
     static func encode(_ activity: FITActivity) -> Data {
@@ -52,8 +52,8 @@ enum FITEncoder {
                 s.heartRate.map { UInt64(clamping: $0) },
                 s.cadence.map { UInt64(clamping: $0) },
                 s.power.map { UInt64(clamping: $0) },
-                s.speed.map { UInt64(clamping: Int(($0 * 1000).rounded())) },
-                UInt64(clamping: Int((s.distance * 100).rounded())),
+                s.speed.map { fit($0 * 1000) },
+                fit(s.distance * 100),
             ])
             previous = s
         }
@@ -72,10 +72,10 @@ enum FITEncoder {
                 fitTime(lap.endTime), fitTime(lap.startTime),
                 ms(lap.endTime.timeIntervalSince(lap.startTime)), ms(lap.timerTime),
                 cm(m.distance),
-                UInt64(m.avgPower), UInt64(m.maxPower),
-                m.avgHeartRate.map(UInt64.init), m.maxHeartRate.map(UInt64.init),
-                m.avgCadence.map(UInt64.init), m.maxCadence.map(UInt64.init),
-                9, 1, 2, UInt64(i),   // event lap, stop, cyclisme
+                UInt64(clamping: m.avgPower), UInt64(clamping: m.maxPower),
+                m.avgHeartRate.map { UInt64(clamping: $0) }, m.maxHeartRate.map { UInt64(clamping: $0) },
+                m.avgCadence.map { UInt64(clamping: $0) }, m.maxCadence.map { UInt64(clamping: $0) },
+                9, 1, 2, UInt64(clamping: i),   // event lap, stop, cyclisme
             ])
         }
 
@@ -89,13 +89,13 @@ enum FITEncoder {
         w.write(local: 4, [
             end, start,
             ms(activity.endDate.timeIntervalSince(activity.startDate)), ms(timerTime),
-            cm(all.distance), UInt64(all.kilojoules.rounded()),   // kcal ≈ kJ à vélo
-            all.avgHeartRate.map(UInt64.init), all.maxHeartRate.map(UInt64.init),
-            all.avgCadence.map(UInt64.init), all.maxCadence.map(UInt64.init),
-            UInt64(all.avgPower), UInt64(all.maxPower),
-            0, UInt64(activity.laps.count),
-            UInt64(all.normalizedPower), UInt64((all.tss * 10).rounded()),
-            UInt64((all.intensityFactor * 1000).rounded()), UInt64(max(activity.ftp, 0)),
+            cm(all.distance), fit(all.kilojoules),   // kcal ≈ kJ à vélo
+            all.avgHeartRate.map { UInt64(clamping: $0) }, all.maxHeartRate.map { UInt64(clamping: $0) },
+            all.avgCadence.map { UInt64(clamping: $0) }, all.maxCadence.map { UInt64(clamping: $0) },
+            UInt64(clamping: all.avgPower), UInt64(clamping: all.maxPower),
+            0, UInt64(clamping: activity.laps.count),
+            UInt64(clamping: all.normalizedPower), fit(all.tss * 10),
+            fit(all.intensityFactor * 1000), UInt64(clamping: activity.ftp),
             8, 1, 2, 6, 0, 0,   // event session, stop, cyclisme, home trainer, fin d'activité
         ])
 
@@ -109,8 +109,15 @@ enum FITEncoder {
         return w.finalize()
     }
 
-    private static func ms(_ t: TimeInterval) -> UInt64 { UInt64(max(t, 0) * 1000) }
-    private static func cm(_ m: Double) -> UInt64 { UInt64(max(m, 0) * 100) }
+    private static func ms(_ t: TimeInterval) -> UInt64 { fit(t * 1000) }
+    private static func cm(_ m: Double) -> UInt64 { fit(m * 100) }
+
+    /// Conversion qui ne plante jamais : négatif ou NaN → 0, infini ou énorme → borne haute
+    /// (les champs FIT trop grands sont ensuite ramenés au maximum de leur type).
+    static func fit(_ value: Double) -> UInt64 {
+        guard value.isFinite else { return value.isNaN || value < 0 ? 0 : UInt64(UInt32.max) }
+        return UInt64(min(max(value.rounded(), 0), Double(UInt32.max)))
+    }
 }
 
 enum FITBaseType {

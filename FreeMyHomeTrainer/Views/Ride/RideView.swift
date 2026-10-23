@@ -283,7 +283,7 @@ private struct LiveRideView: View {
                 Button { engine.adjustIntensity(by: -0.05) } label: { Image(systemName: "minus") }
                     .keyboardShortcut(.downArrow, modifiers: [])
                     .help("Baisser l'intensité de 5 % (↓)")
-                Text("Intensité \(Int((engine.intensity * 100).rounded())) %")
+                Text("Intensité \(Int(safe: engine.intensity * 100)) %")
                     .monospacedDigit()
                     .fixedSize()
                 Button { engine.adjustIntensity(by: 0.05) } label: { Image(systemName: "plus") }

@@ -27,7 +27,7 @@ enum WorkoutSanity {
             let watts = max(block.target.watts(ftp: ftp),
                             block.kind == .ramp ? block.endTarget.watts(ftp: ftp) : 0)
             let fraction = watts / Double(ftp)
-            let what = "\(Format.duration(block.duration)) à \(Int(watts.rounded())) W (\(Int((fraction * 100).rounded())) % FTP)"
+            let what = "\(Format.duration(block.duration)) à \(Int(safe: watts)) W (\(Int(safe: fraction * 100)) % FTP)"
 
             if watts > 2000 {
                 out.append("\(what) : plus de 2 000 W, c'est hors de portée même pour un sprinteur.")
@@ -47,7 +47,7 @@ enum WorkoutSanity {
 
     /// « 30 s », « 2 min », « 7 min ».
     private static func spoken(_ seconds: TimeInterval) -> String {
-        if seconds < 60 { return "\(max(Int((seconds / 5).rounded()) * 5, 5)) s" }
-        return "\(Int((seconds / 60).rounded())) min"
+        if seconds < 60 { return "\(max(Int(safe: seconds / 5) * 5, 5)) s" }
+        return "\(Int(safe: seconds / 60)) min"
     }
 }

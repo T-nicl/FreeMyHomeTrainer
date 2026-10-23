@@ -141,6 +141,16 @@ LLM puisse le produire :
 Séances d'exemple créées au premier lancement : Sweet Spot 3x10', Tempo 2x20', VO2 max 5x3',
 Endurance 1h.
 
+**Limites** (aucune séance ne doit pouvoir figer ou planter l'app) : répétitions 1 à 50,
+imbrication sur 4 niveaux, 5 000 segments une fois déroulée, 2 000 blocs, bloc de 1 s à 24 h,
+séance de 24 h au plus, 0 à 2 500 W ou 0 à 1 000 % FTP, pas de répétition vide, nom ≤ 100 et
+notes ≤ 5 000 caractères, fichier importé ≤ 256 Ko.
+- Séance **importée** (JSON, LLM, ami) hors limites → refusée avec un message en français.
+- Séance **enregistrée** hors limites → ramenée dans les limites au chargement (valeurs bornées,
+  blocs de durée nulle retirés, répétitions vides retirées, imbrication excessive aplatie).
+- **Éditeur** : saisie bornée (2 500 W, 24 h) ; si la séance dépasse malgré tout une limite, un
+  bandeau « Cette séance dépasse les limites de l'app » l'explique.
+
 ## 4. Règles de calcul
 
 ### 4.1 Zones de puissance (Coggan, % FTP)

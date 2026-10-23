@@ -235,7 +235,7 @@ final class WorkoutEngine {
         }
 
         guard let watts = timeline.targetWatts(at: position) else { return }
-        let target = Int((watts * intensity).rounded())
+        let target = Int(safe: min(max(watts * intensity, 0), Double(WorkoutLimits.maxWatts)))
         targetWatts = target
         // Envoi au trainer uniquement si la consigne change (au plus une fois par seconde).
         let canSend = force || lastSentAt.map { now.timeIntervalSince($0) >= 1 } ?? true

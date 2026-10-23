@@ -140,7 +140,7 @@ struct WorkoutSummaryRow: View {
 
     @ViewBuilder private var durationAndPower: some View {
         StatView(title: "Durée", value: Format.duration(timeline.duration))
-        StatView(title: "Puissance moy.", value: "\(Int(timeline.averageWatts.rounded())) W")
+        StatView(title: "Puissance moy.", value: "\(Int(safe: timeline.averageWatts)) W")
     }
 
     private func intensity(showsLabel: Bool) -> some View {
@@ -207,11 +207,12 @@ struct IntensityStars: View {
 /// Bandeau orange quand une séance paraît physiquement irréaliste (voir `WorkoutSanity`).
 struct SanityBanner: View {
     let warnings: [String]
+    var title = "Attention, cette séance paraît irréaliste"
 
     var body: some View {
         if !warnings.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                Label("Attention, cette séance paraît irréaliste", systemImage: "exclamationmark.triangle.fill")
+                Label(title, systemImage: "exclamationmark.triangle.fill")
                     .font(.headline)
                     .foregroundStyle(.orange)
                 ForEach(warnings.prefix(3), id: \.self) { warning in

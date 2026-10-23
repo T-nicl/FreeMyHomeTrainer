@@ -126,7 +126,7 @@ struct PowerField: View {
             Stepper("", onIncrement: { step(+5) }, onDecrement: { step(-5) }).labelsHidden()
             Circle().fill(PowerZone(watts: watts, ftp: ftp).color).frame(width: 9, height: 9)
             if ftp > 0 {
-                Text("≈ \(Int((watts / Double(ftp) * 100).rounded())) % FTP")
+                Text("≈ \(Int(safe: watts / Double(ftp) * 100)) % FTP")
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
@@ -136,11 +136,11 @@ struct PowerField: View {
     private var watts: Double { target.watts(ftp: ftp) }
 
     private var wattsBinding: Binding<Int> {
-        Binding(get: { Int(watts.rounded()) }, set: { target = .watts(max($0, 0)) })
+        Binding(get: { Int(safe: watts) }, set: { target = .watts(min(max($0, 0), WorkoutLimits.maxWatts)) })
     }
 
     private func step(_ delta: Int) {
-        target = .watts(max(Int(watts.rounded()) + delta, 0))
+        target = .watts(min(max(Int(safe: watts) + delta, 0), WorkoutLimits.maxWatts))
     }
 }
 
@@ -162,7 +162,8 @@ struct DurationParseStrategy: ParseStrategy {
             .map { $0.trimmingCharacters(in: .whitespaces) }
         let numbers = try parts.map { part -> Int in
             if part.isEmpty { return 0 }
-            guard let n = Int(part), n >= 0 else { throw InvalidDuration() }
+            // Au plus 6 chiffres par partie : pas de débordement dans le calcul en secondes.
+            guard part.count <= 6, let n = Int(part), n >= 0 else { throw InvalidDuration() }
             return n
         }
         let seconds: Int
@@ -172,7 +173,7 @@ struct DurationParseStrategy: ParseStrategy {
         case 3: seconds = numbers[0] * 3600 + numbers[1] * 60 + numbers[2]
         default: throw InvalidDuration()
         }
-        guard seconds > 0 else { throw InvalidDuration() }
+        guard seconds > 0, TimeInterval(seconds) <= WorkoutLimits.maxBlockDuration else { throw InvalidDuration() }
         return TimeInterval(seconds)
     }
 }

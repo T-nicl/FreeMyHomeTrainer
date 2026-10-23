@@ -21,8 +21,8 @@ struct WorkoutSegment: Hashable, Sendable {
 
     var label: String {
         let d = Format.duration(duration)
-        let p = isRamp ? "\(Int(startWatts.rounded()))→\(Int(endWatts.rounded())) W"
-                       : "\(Int(startWatts.rounded())) W"
+        let p = isRamp ? "\(Int(safe: startWatts))→\(Int(safe: endWatts)) W"
+                       : "\(Int(safe: startWatts)) W"
         return "\(d) @ \(p)"
     }
 
@@ -53,6 +53,8 @@ struct WorkoutTimeline: Sendable {
     private static func flatten(_ blocks: [WorkoutBlock], ftp: Int, repetition: (Int, Int)?,
                                 time: inout TimeInterval, into out: inout [WorkoutSegment]) {
         for block in blocks {
+            // Filet de sécurité : jamais plus de `maxSegments` segments (mémoire, temps de calcul).
+            guard out.count < WorkoutLimits.maxSegments else { return }
             switch block.kind {
             case .steady, .ramp:
                 guard block.duration > 0 else { continue }
@@ -63,8 +65,10 @@ struct WorkoutTimeline: Sendable {
                                           repetition: repetition))
                 time += block.duration
             case .repeats:
-                guard block.count > 0 else { continue }
-                for i in 1...block.count {
+                // Une répétition qui ne produit rien est sautée : sans cela, des répétitions vides
+                // imbriquées échappaient au plafond de segments et figeaient l'app (50⁶ tours).
+                guard block.count > 0, block.producesSegments else { continue }
+                for i in 1...block.count where out.count < WorkoutLimits.maxSegments {
                     flatten(block.blocks, ftp: ftp, repetition: (i, block.count), time: &time, into: &out)
                 }
             }
@@ -141,14 +145,14 @@ enum PowerZone: Int, CaseIterable, Sendable {
 enum Format {
     /// 3725 → "1:02:05", 600 → "10:00"
     static func clock(_ t: TimeInterval) -> String {
-        let s = max(Int(t.rounded(.down)), 0)
+        let s = max(Int(safe: t.rounded(.down)), 0)
         let h = s / 3600, m = (s % 3600) / 60, sec = s % 60
         return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec) : String(format: "%d:%02d", m, sec)
     }
 
     /// 600 → "10'", 90 → "1'30", 45 → "45\"", 3900 → "1h05"
     static func duration(_ t: TimeInterval) -> String {
-        let s = max(Int(t.rounded()), 0)
+        let s = max(Int(safe: t), 0)
         if s >= 3600 { return String(format: "%dh%02d", s / 3600, (s % 3600) / 60) }
         if s < 60 { return "\(s)\"" }
         return s % 60 == 0 ? "\(s / 60)'" : String(format: "%d'%02d", s / 60, s % 60)
