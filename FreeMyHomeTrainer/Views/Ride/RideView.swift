@@ -12,6 +12,7 @@ struct RideView: View {
     @AppStorage(Settings.weightKey) private var weight = 70.0
     @State private var finishedActivity: ActivityRecord?
     @State private var saveError: String?
+    @State private var confirmAbandon = false
 
     var body: some View {
         Group {
@@ -24,10 +25,27 @@ struct RideView: View {
             }
         }
         .navigationTitle("Rouler")
+        // La séance reste en mémoire tant qu'elle n'est pas enregistrée : on peut réessayer.
         .alert("Enregistrement impossible", isPresented: Binding(get: { saveError != nil },
                                                                    set: { if !$0 { saveError = nil } })) {
-            Button("OK") { saveError = nil }
-        } message: { Text(saveError ?? "") }
+            Button("Réessayer") {
+                saveError = nil
+                finish()
+            }
+            Button("Abandonner la séance…", role: .destructive) {
+                saveError = nil
+                confirmAbandon = true
+            }
+            Button("Plus tard", role: .cancel) { saveError = nil }
+        } message: {
+            Text("\(saveError ?? "")\n\nTa séance n'est pas perdue : tu peux réessayer maintenant, ou plus tard avec le bouton « Terminer ».")
+        }
+        .confirmationDialog("Abandonner la séance sans l'enregistrer ?", isPresented: $confirmAbandon) {
+            Button("Abandonner la séance", role: .destructive) { appState.engine = nil }
+            Button("Réessayer l'enregistrement") { finish() }
+        } message: {
+            Text("Les données de cette sortie seront définitivement perdues.")
+        }
     }
 
     private func start(_ workout: Workout?) {
@@ -40,18 +58,15 @@ struct RideView: View {
     }
 
     private func finish() {
-        guard let engine = appState.engine else { return }
         MiniOverlay.shared.close()
-        engine.finish()
         do {
-            if let record = try ActivitySaver.save(engine: engine, context: context) {
+            if let record = try appState.finishRide(context: context) {
                 uploads.uploadAfterRide(record, context: context)
                 finishedActivity = record
             }
         } catch {
             saveError = error.localizedDescription
         }
-        appState.engine = nil
     }
 }
 

@@ -306,6 +306,7 @@ final class MockSource: RideDataSource {
     var power: Int? = 150
     var cadence: Double? = 90
     var currentHeartRate: Int? = 140
+    var controlGeneration = 0
     var targets: [Int] = []
     var grades: [Double] = []
 

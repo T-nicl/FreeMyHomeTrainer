@@ -90,12 +90,15 @@ enum FTMSParser {
         return r.u8().map(Int.init)
     }
 
-    /// Réponse du Control Point : 0x80, opcode de la requête, code résultat (0x01 = succès).
-    static func parseControlPointResponse(_ data: Data) -> (opcode: UInt8, success: Bool)? {
+    /// Réponse du Control Point : 0x80, opcode de la requête, code résultat
+    /// (0x01 = succès, 0x05 = contrôle non autorisé).
+    static func parseControlPointResponse(_ data: Data) -> (opcode: UInt8, success: Bool, result: UInt8)? {
         var r = ByteReader(data)
         guard r.u8() == 0x80, let op = r.u8(), let result = r.u8() else { return nil }
-        return (op, result == 0x01)
+        return (op, result == 0x01, result)
     }
+
+    static let controlNotPermitted: UInt8 = 0x05
 }
 
 /// Commandes du Control Point FTMS.

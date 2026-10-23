@@ -7,6 +7,8 @@ protocol RideDataSource: AnyObject {
     var power: Int? { get }
     var cadence: Double? { get }
     var currentHeartRate: Int? { get }
+    /// Incrémenté à chaque (re)prise de contrôle du trainer : la consigne doit alors être renvoyée.
+    var controlGeneration: Int { get }
     func setTargetPower(_ watts: Int)
     func setGrade(_ percent: Double)
 }
@@ -56,6 +58,7 @@ final class WorkoutEngine {
     @ObservationIgnored private var lastTick: Date?
     @ObservationIgnored private var lastSentTarget: Int?
     @ObservationIgnored private var lastSentAt: Date?
+    @ObservationIgnored private var seenControlGeneration = 0
     @ObservationIgnored private var stoppedPedalingSince: Date?
     @ObservationIgnored private var bike: VirtualBike
     @ObservationIgnored private var recentPowers: [Int] = []
@@ -101,6 +104,7 @@ final class WorkoutEngine {
         startDate = now
         lastTick = now
         lapStart = (now, 0, 0)
+        seenControlGeneration = source.controlGeneration
         if timeline == nil {
             source.setGrade(0)   // sortie libre : pas de consigne ERG
         } else {
@@ -109,9 +113,7 @@ final class WorkoutEngine {
         if autoTick {
             noSleepActivity = ProcessInfo.processInfo.beginActivity(
                 options: [.idleDisplaySleepDisabled, .userInitiated], reason: "Séance en cours")
-            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-                MainActor.assumeIsolated { self?.tick(now: Date()) }
-            }
+            timer = RepeatingTimer.schedule(every: 1) { [weak self] in self?.tick(now: Date()) }
         }
     }
 
@@ -142,6 +144,8 @@ final class WorkoutEngine {
         timer = nil
         if let noSleepActivity { ProcessInfo.processInfo.endActivity(noSleepActivity) }
         noSleepActivity = nil
+        // Arrêt en cours de séance : le trainer ne doit pas rester bloqué sur la consigne ERG.
+        if timeline != nil, !isWorkoutComplete { source.setGrade(0) }
         closeLap(now: now)
         state = .finished
     }
@@ -160,6 +164,7 @@ final class WorkoutEngine {
         if recentPowers.count > 3 { recentPowers.removeFirst() }
         power3s = source.power == nil ? nil : recentPowers.reduce(0, +) / recentPowers.count
 
+        resendTargetIfControlRegained(now: now)
         updateAutoPause(now: now)
         guard state == .running else {
             bike.stop()
@@ -175,6 +180,19 @@ final class WorkoutEngine {
 
         updateTarget(now: now, force: false)
         if dt > 0 { recordSample(now: now) }
+    }
+
+    /// Après une reconnexion ou une prise de contrôle par une autre app, le trainer a perdu la
+    /// consigne : on la renvoie immédiatement au lieu d'attendre le prochain changement de palier.
+    private func resendTargetIfControlRegained(now: Date) {
+        guard source.controlGeneration != seenControlGeneration else { return }
+        seenControlGeneration = source.controlGeneration
+        lastSentTarget = nil
+        if timeline == nil || isWorkoutComplete {
+            source.setGrade(0)
+        } else {
+            updateTarget(now: now, force: true)
+        }
     }
 
     private func updateAutoPause(now: Date) {
@@ -248,5 +266,19 @@ final class WorkoutEngine {
                             sampleRange: start.sample..<samples.count))
         }
         lapStart = (now, elapsed, samples.count)
+    }
+}
+
+/// Minuterie répétitive sur le fil principal, inscrite dans les modes « courants » de la boucle
+/// d'événements : elle continue pendant un déplacement / redimensionnement de fenêtre ou un menu
+/// ouvert (`Timer.scheduledTimer` se fige dans ces cas, ce qui faussait le chrono de la séance).
+enum RepeatingTimer {
+    @discardableResult
+    static func schedule(every interval: TimeInterval, _ action: @escaping @MainActor () -> Void) -> Timer {
+        let timer = Timer(timeInterval: interval, repeats: true) { _ in
+            MainActor.assumeIsolated { action() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        return timer
     }
 }

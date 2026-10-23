@@ -17,9 +17,7 @@ final class SimulatedTrainer {
     }
 
     func start() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.tick() }
-        }
+        timer = RepeatingTimer.schedule(every: 1) { [weak self] in self?.tick() }
     }
 
     func stop() {

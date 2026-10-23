@@ -55,6 +55,9 @@ Fenêtre de 1000 × 680 points minimum ; aucun contenu ne doit être coupé à c
 ### 2.4 Fin de séance
 Résumé (statistiques, état de l'envoi Garmin), puis « Voir dans l'historique » ou « Nouvelle
 sortie ». Une séance arrêtée sans aucun échantillon n'est pas enregistrée.
+**Une séance n'est jamais perdue** : si l'enregistrement échoue, elle reste en mémoire et
+l'alerte propose « Réessayer », « Abandonner la séance… » (avec confirmation) ou « Plus tard »
+(« Terminer » relance l'enregistrement). Aucun demi-enregistrement : ni fiche, ni .fit orphelin.
 
 ### 2.5 Séances (bibliothèque et éditeur)
 **Liste** (colonne de gauche) :
@@ -178,7 +181,12 @@ séances dures mais réalistes (5x3' à 118 %, 30/30 à 150 %, 1 h à la FTP) ne
   Pause manuelle par bouton ou espace.
 - Écart d'horloge plafonné à 2 s (une mise en veille ne compte pas comme temps roulé).
 - Fin du déroulé : la consigne ERG est relâchée (pente 0), l'enregistrement continue jusqu'à
-  « Terminer ».
+  « Terminer ». « Terminer » en cours de séance relâche aussi l'ERG.
+- Après une reconnexion du trainer ou une reprise de contrôle, la consigne en cours est
+  renvoyée immédiatement (y compris en pause). Si le trainer signale que le contrôle a été pris
+  par une autre app, ou refuse une consigne faute de contrôle, l'app le redemande, au plus une
+  fois toutes les 10 s.
+- Le chrono et le pilotage continuent pendant un déplacement de fenêtre ou un menu ouvert.
 - Un **tour** (lap) par segment de la séance ; la roue libre après la fin forme un dernier tour.
 
 ### 4.5 Vitesse et distance virtuelles

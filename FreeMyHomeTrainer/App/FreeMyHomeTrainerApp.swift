@@ -53,6 +53,16 @@ final class AppState {
     var selectedWorkoutID: UUID?
     /// Séance en cours (conservée quand on change d'écran).
     var engine: WorkoutEngine?
+
+    /// Termine la séance en cours et l'enregistre. En cas d'échec, la séance est conservée
+    /// (état « terminée ») pour pouvoir réessayer : elle n'est libérée qu'une fois enregistrée.
+    func finishRide(context: ModelContext, directory: URL = Storage.activitiesDirectory) throws -> ActivityRecord? {
+        guard let engine else { return nil }
+        engine.finish()
+        let record = try ActivitySaver.save(engine: engine, context: context, directory: directory)
+        self.engine = nil
+        return record
+    }
 }
 
 /// Clés des réglages utilisateur stockés dans UserDefaults.

@@ -42,6 +42,9 @@ final class DeviceManager: NSObject {
     private(set) var heartRateState: LinkState = .disconnected
     /// Le trainer a accepté la prise de contrôle (mode ERG possible).
     private(set) var hasControl = false
+    /// Incrémenté à chaque prise de contrôle réussie (connexion, reconnexion, reprise après une
+    /// autre app) : le moteur de séance renvoie alors sa consigne.
+    private(set) var controlGeneration = 0
     private(set) var powerRange: ClosedRange<Int>?
     private(set) var isSimulating = false
 
@@ -62,6 +65,7 @@ final class DeviceManager: NSObject {
     @ObservationIgnored private var commandQueue: [FTMSCommand] = []
     @ObservationIgnored private var inFlight: (command: FTMSCommand, sentAt: Date)?
     @ObservationIgnored private var simulator: SimulatedTrainer?
+    @ObservationIgnored private var lastControlRequest: Date?
     @ObservationIgnored private var watchdog: Timer?
 
     private enum Keys {
@@ -72,9 +76,7 @@ final class DeviceManager: NSObject {
     override init() {
         super.init()
         central = CBCentralManager(delegate: self, queue: .main)
-        watchdog = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.checkStaleness() }
-        }
+        watchdog = RepeatingTimer.schedule(every: 1) { [weak self] in self?.checkStaleness() }
     }
 
     // MARK: - Mesures
@@ -145,7 +147,15 @@ final class DeviceManager: NSObject {
         guard let response = FTMSParser.parseControlPointResponse(data) else { return }
         if response.opcode == FTMSCommand.requestControl.opcode {
             hasControl = response.success
-            if response.success { enqueue(.start) }
+            if response.success {
+                controlGeneration += 1
+                enqueue(.start)
+            }
+        } else if response.opcode == FTMSCommand.setTargetPower(0).opcode,
+                  response.result == FTMSParser.controlNotPermitted {
+            // Consigne refusée faute de contrôle : on le redemande. (Un autre refus — valeur hors
+            // plage, non supporté… — ne se règle pas en reprenant le contrôle.)
+            requestControlAgain()
         }
         if let f = inFlight, f.command.opcode == response.opcode { inFlight = nil }
         sendNextCommand()
@@ -205,6 +215,16 @@ final class DeviceManager: NSObject {
         central.connect(peripheral)
     }
 
+    /// Redemande le contrôle, au plus une fois toutes les 10 s : si une autre app (Zwift…) se
+    /// dispute le trainer, on évite un ping-pong de commandes.
+    private func requestControlAgain(now: Date = Date()) {
+        guard controlPoint != nil, !commandQueue.contains(.requestControl) else { return }
+        if let last = lastControlRequest, now.timeIntervalSince(last) < 10 { return }
+        lastControlRequest = now
+        commandQueue.insert(.requestControl, at: 0)
+        sendNextCommand()
+    }
+
     private func resetTrainerLink() {
         controlPoint = nil; hasControl = false; powerRange = nil
         commandQueue.removeAll(); inFlight = nil
@@ -232,6 +252,7 @@ final class DeviceManager: NSObject {
         trainerName = "Trainer simulé"
         trainerState = .connected
         hasControl = true
+        controlGeneration += 1
         powerRange = 0...2000
         sim.start()
     }
@@ -365,7 +386,11 @@ extension DeviceManager: @preconcurrency CBPeripheralDelegate {
             }
         case CBUUID(string: GATT.machineStatus):
             // 0xFF : le contrôle a été pris par une autre app (ex. Zwift).
-            if data.first == 0xFF { hasControl = false }
+            // On redemande le contrôle : la séance en cours renverra sa consigne une fois repris.
+            if data.first == 0xFF {
+                hasControl = false
+                requestControlAgain()
+            }
         default:
             break
         }

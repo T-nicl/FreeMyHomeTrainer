@@ -5,7 +5,10 @@ enum ActivitySaver {
     /// Crée l'activité (base locale + fichier .FIT) à partir d'une séance terminée.
     /// Renvoie nil si rien n'a été enregistré (séance arrêtée avant de pédaler).
     @MainActor
-    static func save(engine: WorkoutEngine, context: ModelContext, endDate: Date = Date()) throws -> ActivityRecord? {
+    /// `persist` enregistre le contexte ; remplaçable dans les tests pour simuler un échec.
+    static func save(engine: WorkoutEngine, context: ModelContext, endDate: Date = Date(),
+                     directory: URL = Storage.activitiesDirectory,
+                     persist: (ModelContext) throws -> Void = { try $0.save() }) throws -> ActivityRecord? {
         guard let start = engine.startDate, !engine.samples.isEmpty else { return nil }
         let name = engine.workout?.name ?? "Sortie libre"
         let record = ActivityRecord(name: name, startDate: start, ftp: engine.ftp)
@@ -29,11 +32,19 @@ enum ActivitySaver {
         let fit = FITEncoder.encode(FITActivity(startDate: start, endDate: endDate, ftp: engine.ftp,
                                                 samples: engine.samples, laps: engine.laps))
         let fileName = "\(record.id.uuidString).fit"
-        try fit.write(to: Storage.activitiesDirectory.appendingPathComponent(fileName), options: .atomic)
+        let fitURL = directory.appendingPathComponent(fileName)
+        try fit.write(to: fitURL, options: .atomic)
         record.fitFileName = fileName
 
         context.insert(record)
-        try context.save()
+        do {
+            try persist(context)
+        } catch {
+            // Pas de demi-enregistrement : ni fiche dans la base, ni fichier .fit orphelin.
+            context.delete(record)
+            try? FileManager.default.removeItem(at: fitURL)
+            throw error
+        }
         return record
     }
 
