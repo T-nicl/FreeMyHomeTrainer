@@ -188,3 +188,32 @@ extension Workout {
         ]),
     ]
 }
+
+/// Noms de séances uniques : « Nouvelle séance », « Nouvelle séance 2 », « Nouvelle séance 3 »…
+enum WorkoutNaming {
+    static let fallback = "Séance sans nom"
+
+    /// Clé de comparaison : insensible à la casse, aux accents et aux espaces autour.
+    static func key(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+    }
+
+    /// `name` s'il est libre, sinon le même nom suivi du premier numéro disponible.
+    static func unique(_ name: String, among existing: [String]) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let base = trimmed.isEmpty ? fallback : trimmed
+        let taken = Set(existing.map(key))
+        guard taken.contains(key(base)) else { return base }
+
+        // « Séance 2 » déjà pris → on repart de « Séance » et on cherche le numéro suivant.
+        var stem = base
+        var number = 2
+        if let match = base.firstMatch(of: /^(.*\S) (\d+)$/), let n = Int(match.2) {
+            stem = String(match.1)
+            number = n + 1
+        }
+        while taken.contains(key("\(stem) \(number)")) { number += 1 }
+        return "\(stem) \(number)"
+    }
+}

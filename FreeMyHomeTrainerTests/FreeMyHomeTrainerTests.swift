@@ -106,6 +106,16 @@ struct WorkoutModelTests {
         }
     }
 
+    @Test func uniqueNames() {
+        let names = ["Nouvelle séance", "Nouvelle séance 2", "Sweet Spot 3x10'"]
+        #expect(WorkoutNaming.unique("Tempo", among: names) == "Tempo")
+        #expect(WorkoutNaming.unique("Nouvelle séance", among: names) == "Nouvelle séance 3")
+        #expect(WorkoutNaming.unique("nouvelle seance ", among: names) == "nouvelle seance 3")  // casse, accents
+        #expect(WorkoutNaming.unique("Nouvelle séance 2", among: names) == "Nouvelle séance 3")
+        #expect(WorkoutNaming.unique("Sweet Spot 3x10'", among: names) == "Sweet Spot 3x10' 2")
+        #expect(WorkoutNaming.unique("   ", among: names) == WorkoutNaming.fallback)
+    }
+
     @Test func powerZones() {
         #expect(PowerZone(watts: 100, ftp: 200) == .z1)
         #expect(PowerZone(watts: 180, ftp: 200) == .z3)

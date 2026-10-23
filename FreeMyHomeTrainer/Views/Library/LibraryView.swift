@@ -14,6 +14,8 @@ struct LibraryView: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
+                listHeader
+                Divider()
                 List(selection: $selection) {
                     ForEach(workouts) { saved in
                         LibraryRow(workout: saved.workout, ftp: ftp)
@@ -37,7 +39,9 @@ struct LibraryView: View {
 
             Group {
                 if let saved = selected {
-                    WorkoutEditorView(saved: saved, onRide: { ride(saved) })
+                    WorkoutEditorView(saved: saved,
+                                      otherNames: workouts.filter { $0.id != saved.id }.map(\.name),
+                                      onRide: { ride(saved) })
                         .id(saved.id)
                 } else {
                     ContentUnavailableView("Aucune séance sélectionnée",
@@ -60,15 +64,30 @@ struct LibraryView: View {
         }
         .onAppear {
             normalizeOrder()
+            normalizeNames()
             if selection == nil { selection = appState.selectedWorkoutID ?? workouts.first?.id }
         }
+    }
+
+    /// En-tête de la liste, avec le bouton de création bien visible.
+    private var listHeader: some View {
+        HStack {
+            Text("Mes séances").font(.headline)
+            Spacer()
+            Button { create() } label: { Label("Nouvelle séance", systemImage: "plus") }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .help("Créer une nouvelle séance (⌘N)")
+                .keyboardShortcut("n", modifiers: .command)
+        }
+        .lineLimit(1)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
     }
 
     /// Boutons sous la liste, à la manière des listes macOS.
     private var listActions: some View {
         HStack(spacing: 2) {
-            Button { create() } label: { Image(systemName: "plus").frame(width: 24, height: 22) }
-                .help("Nouvelle séance")
             Button { if let s = selected { duplicate(s) } } label: {
                 Image(systemName: "plus.square.on.square").frame(width: 24, height: 22)
             }
@@ -98,6 +117,20 @@ struct LibraryView: View {
         if Set(workouts.map(\.sortOrder)).count < workouts.count { renumber(workouts) }
     }
 
+    /// Doublons hérités d'avant la règle des noms uniques : on numérote les suivants.
+    private func normalizeNames() {
+        var seen: [String] = []
+        for saved in workouts {
+            let unique = WorkoutNaming.unique(saved.name, among: seen)
+            if unique != saved.name {
+                var w = saved.workout
+                w.name = unique
+                saved.workout = w
+            }
+            seen.append(unique)
+        }
+    }
+
     private func move(from source: IndexSet, to destination: Int) {
         var ordered = workouts
         ordered.move(fromOffsets: source, toOffset: destination)
@@ -113,7 +146,9 @@ struct LibraryView: View {
             .repeats(3, [.steady(600, watts(0.9)), .steady(300, watts(0.55))]),
             .steady(300, watts(0.5)),
         ])
-        let saved = SavedWorkout(w)
+        var named = w
+        named.name = WorkoutNaming.unique(w.name, among: workouts.map(\.name))
+        let saved = SavedWorkout(named)
         context.insert(saved)
         renumber([saved] + workouts)          // en tête de liste
         selection = saved.id
@@ -121,7 +156,7 @@ struct LibraryView: View {
 
     private func duplicate(_ saved: SavedWorkout) {
         var w = saved.workout
-        w.name += " (copie)"
+        w.name = WorkoutNaming.unique("\(w.name) (copie)", among: workouts.map(\.name))
         let copy = SavedWorkout(w)
         context.insert(copy)
         var ordered = workouts.filter { $0.id != copy.id }

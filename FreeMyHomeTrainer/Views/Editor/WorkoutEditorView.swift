@@ -2,6 +2,8 @@ import SwiftUI
 
 struct WorkoutEditorView: View {
     let saved: SavedWorkout
+    /// Noms des autres séances : deux séances ne peuvent pas porter le même nom.
+    let otherNames: [String]
     var onRide: () -> Void
 
     @AppStorage(Settings.ftpKey) private var ftp = 200
@@ -11,8 +13,11 @@ struct WorkoutEditorView: View {
     @State private var dragState = BlockDragState()
     @State private var frames = BlockFrames()
 
-    init(saved: SavedWorkout, onRide: @escaping () -> Void) {
+    @FocusState private var nameFocused: Bool
+
+    init(saved: SavedWorkout, otherNames: [String], onRide: @escaping () -> Void) {
         self.saved = saved
+        self.otherNames = otherNames
         self.onRide = onRide
         _draft = State(initialValue: saved.workout)
     }
@@ -47,6 +52,8 @@ struct WorkoutEditorView: View {
         .focusEffectDisabled()
         .onDeleteCommand { deleteSelection() }
         .onChange(of: draft) { _, new in saved.workout = new }
+        .onChange(of: nameFocused) { _, focused in if !focused { commitName() } }
+        .onDisappear(perform: commitName)
     }
 
     // MARK: - Sous-vues
@@ -58,6 +65,8 @@ struct WorkoutEditorView: View {
                     .textFieldStyle(.plain)
                     .font(.title.weight(.bold))
                     .lineLimit(1)
+                    .focused($nameFocused)
+                    .onSubmit(commitName)
                 Button(action: onRide) {
                     Label("Rouler", systemImage: "play.fill")
                 }
@@ -65,6 +74,14 @@ struct WorkoutEditorView: View {
                 .controlSize(.large)
                 .fixedSize()
                 .disabled(draft.totalDuration == 0)
+            }
+            if uniqueName != draft.name.trimmingCharacters(in: .whitespacesAndNewlines) {
+                let isEmpty = draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                Label(isEmpty ? "Sans nom, la séance s'appellera « \(uniqueName) »."
+                              : "Ce nom est déjà pris : la séance s'appellera « \(uniqueName) ».",
+                      systemImage: "exclamationmark.circle")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
             }
             WorkoutSummaryRow(timeline: timeline)
             TextField("Notes (facultatif)", text: $draft.notes, axis: .vertical)
@@ -110,6 +127,16 @@ struct WorkoutEditorView: View {
     }
 
     // MARK: - Édition
+
+    private var uniqueName: String { WorkoutNaming.unique(draft.name, among: otherNames) }
+
+    /// Fin de saisie du nom : vide ou déjà pris, il est complété pour rester unique.
+    private func commitName() {
+        let name = uniqueName
+        guard name != draft.name else { return }
+        draft.name = name
+        saved.workout = draft
+    }
 
     /// Nouveaux blocs en watts, à partir d'un pourcentage de la FTP (arrondi à 5 W).
     private func newBlock(_ kind: WorkoutBlock.Kind) -> WorkoutBlock {
