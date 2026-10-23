@@ -208,27 +208,25 @@ private struct LiveRideView: View {
             .foregroundStyle(color)
     }
 
-    /// Les trois chiffres essentiels, en très grand (comme dans Zwift).
+    /// Comme dans Zwift : les watts en très grand au centre, cardio et cadence plus petits,
+    /// l'un au-dessus de l'autre, à côté.
     private var metrics: some View {
         let target = engine.targetWatts
         let power = engine.power3s
         return HStack(spacing: 14) {
+            let guidance = PowerGuidance(power: power, target: target)
             MetricTile(title: "Watts", value: power.map(String.init) ?? "--", unit: "W",
-                       caption: target.map { "Cible \($0) W" },
-                       accent: powerColor(power: power, target: target))
-            MetricTile(title: "Cardio", value: devices.currentHeartRate.map(String.init) ?? "--", unit: "bpm",
-                       accent: devices.currentHeartRate == nil ? nil : .red)
-            MetricTile(title: "Cadence", value: devices.cadence.map { String(Int($0.rounded())) } ?? "--", unit: "rpm")
+                       caption: target.map { "Cible \($0) W" }, note: guidance?.advice,
+                       accent: guidance?.color, valueSize: 104, centered: true)
+            VStack(spacing: 14) {
+                MetricTile(title: "Cardio", value: devices.currentHeartRate.map(String.init) ?? "--", unit: "bpm",
+                           valueSize: 44)
+                MetricTile(title: "Cadence", value: devices.cadence.map { String(Int($0.rounded())) } ?? "--",
+                           unit: "rpm", valueSize: 44)
+            }
+            .frame(width: 260)
         }
-    }
-
-    /// Vert si on est à ±5 % de la cible, orange en dessous, rouge au-dessus.
-    private func powerColor(power: Int?, target: Int?) -> Color? {
-        guard let power, let target, target > 0 else { return nil }
-        let ratio = Double(power) / Double(target)
-        if ratio < 0.95 { return .orange }
-        if ratio > 1.05 { return .red }
-        return .green
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// Bloc en cours : libellé, temps restant et barre de progression à la couleur de la zone.
@@ -276,8 +274,8 @@ private struct LiveRideView: View {
             }
             stat("Vitesse", String(format: "%.1f km/h", engine.speedKmh))
             stat("Distance", String(format: "%.2f km", engine.distance / 1000))
-            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func stat(_ title: String, _ value: String) -> some View {
@@ -346,27 +344,44 @@ private struct MetricTile: View {
     let value: String
     let unit: String
     var caption: String?
+    /// Consigne mise en avant à côté de la légende (« Accélère »), dans la couleur d'accent.
+    var note: String?
     var accent: Color?
+    var valueSize: CGFloat = 76
+    /// Tuile principale : contenu centré.
+    var centered = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: centered ? .center : .leading, spacing: 2) {
             Text(title.uppercased()).font(.callout.weight(.semibold)).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(value)
-                    .font(.system(size: 76, weight: .bold, design: .rounded).monospacedDigit())
+                    .font(.system(size: valueSize, weight: .bold, design: .rounded).monospacedDigit())
                     .foregroundStyle(accent ?? .primary)
                     .contentTransition(.numericText())
                     .minimumScaleFactor(0.4)
                 Text(unit).font(.title2.weight(.medium)).foregroundStyle(.secondary).fixedSize()
             }
-            Text(caption ?? " ").font(.title3).foregroundStyle(.secondary).minimumScaleFactor(0.8)
+            if caption != nil || note != nil {
+                HStack(spacing: 10) {
+                    if let caption { Text(caption).foregroundStyle(.secondary) }
+                    if let note { Text(note).fontWeight(.bold).foregroundStyle(accent ?? .primary) }
+                }
+                .font(.title3)
+                .minimumScaleFactor(0.8)
+            }
         }
         .lineLimit(1)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: centered ? .center : .leading)
         .padding(14)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
         .accessibilityElement(children: .combine)
     }
+}
+
+extension PowerGuidance {
+    /// Vert dans la cible, orange au-dessus comme en dessous.
+    var color: Color { self == .onTarget ? .green : .orange }
 }
 
 /// Barre de progression du bloc en cours, remplie à la couleur de la zone.

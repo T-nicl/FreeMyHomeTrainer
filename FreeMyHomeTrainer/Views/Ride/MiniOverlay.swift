@@ -111,8 +111,8 @@ private struct MiniOverlayView: View {
                 }
             }
 
-            if let segment = engine.currentSegment, let remaining = engine.segmentRemaining {
-                ProgressView(value: min(max(1 - remaining / max(segment.duration, 1), 0), 1))
+            if let segment = engine.currentSegment, let progress = engine.segmentProgress {
+                ProgressView(value: progress)
                     .progressViewStyle(.linear)
                     .tint(PowerZone(watts: segment.averageWatts, ftp: engine.ftp).color)
             }
@@ -121,7 +121,9 @@ private struct MiniOverlayView: View {
                 Label(devices.currentHeartRate.map(String.init) ?? "--", systemImage: "heart.fill")
                     .foregroundStyle(.red)
                 Label(devices.cadence.map { String(Int($0.rounded())) } ?? "--", systemImage: "arrow.trianglehead.2.clockwise")
-                Text(String(format: "%.1f km/h", engine.speedKmh))
+                if let block = engine.blockNumber {
+                    Text("Bloc \(block.index)/\(block.count)")
+                }
                 Spacer(minLength: 4)
                 Button { engine.togglePause() } label: {
                     Image(systemName: engine.state == .paused ? "play.fill" : "pause.fill")
@@ -142,10 +144,8 @@ private struct MiniOverlayView: View {
         .environment(\.colorScheme, .dark)
     }
 
-    /// Vert à ±5 % de la cible, orange en dessous, rouge au-dessus.
+    /// Vert dans la cible, orange au-dessus comme en dessous.
     private var powerColor: Color {
-        guard let power = engine.power3s, let target = engine.targetWatts, target > 0 else { return .primary }
-        let ratio = Double(power) / Double(target)
-        return ratio < 0.95 ? .orange : ratio > 1.05 ? .red : .green
+        PowerGuidance(power: engine.power3s, target: engine.targetWatts)?.color ?? .primary
     }
 }

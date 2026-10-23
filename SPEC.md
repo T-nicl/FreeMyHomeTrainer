@@ -33,14 +33,14 @@ Fenêtre de 1000 × 680 points minimum ; aucun contenu ne doit être coupé à c
 
 ### 2.2 Rouler — séance en cours
 Disposition inspirée de Zwift, de haut en bas :
-- **Trois grands chiffres**, de même taille : **watts** (moyenne 3 s, verts à ±5 % de la cible,
-  orange en dessous, rouges au-dessus, avec la cible dessous), **cardio** (bpm, en rouge),
-  **cadence** (rpm).
+- **Watts** en très grand au centre (moyenne 3 s, avec la cible dessous) : verts à ±5 % de la
+  cible, sinon orange, avec la consigne **« Accélère »** (trop bas) ou **« Ralentis »** (trop
+  haut). À côté, plus petits et l'un au-dessus de l'autre : **cardio** (bpm) et **cadence** (rpm).
 - **Carte du bloc en cours**, à la couleur de sa zone : libellé (durée @ puissance), répétition
   (n / total), **temps restant du bloc** en gros, **barre de progression** du bloc (vide au début,
   pleine à la fin), « Ensuite : … » ou « Dernier bloc ». Masquée en sortie libre et une fois la
   séance terminée.
-- Ligne secondaire, en petit : **temps** roulé, **reste** de la séance, **vitesse** (km/h),
+- Ligne secondaire, en petit et centrée : **temps** roulé, **reste** de la séance, **vitesse** (km/h),
   **distance**.
 - Profil complet avec curseur de position et puissance réelle tracée par-dessus ; séance terminée
   (roue libre), le curseur reste au bout du profil et la courbe réelle s'y arrête.
@@ -55,7 +55,8 @@ Disposition inspirée de Zwift, de haut en bas :
   plein écran** ; ne prend jamais le focus (cliquer dessus ne fait pas sortir la vidéo du plein
   écran) ; déplaçable.
 - Contenu : puissance / cible, temps d'intervalle (ou temps écoulé en sortie libre), barre de
-  progression de l'intervalle, cardio, cadence, vitesse, boutons Pause et « Revenir à l'app ».
+  progression de l'intervalle, cardio, cadence, **avancement en blocs** (« Bloc 2/10 »,
+  répétitions déroulées), boutons Pause et « Revenir à l'app ».
 - La fenêtre principale se range dans le Dock et revient au premier plan avec « Revenir ».
   La mini-fenêtre se ferme à la fin de la séance.
 

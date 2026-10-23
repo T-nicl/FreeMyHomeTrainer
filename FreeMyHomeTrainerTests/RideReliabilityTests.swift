@@ -171,6 +171,37 @@ struct RideReliabilityTests {
         #expect(free.segmentProgress == nil)                  // sortie libre : pas de bloc
     }
 
+    // Mini-fenêtre : avancement en blocs (« Bloc 2/10 »), répétitions déroulées.
+    @Test func blockNumberCountsUnrolledBlocks() {
+        let w = Workout(name: "x", blocks: [.steady(60, .watts(150)),
+                                            .repeats(3, [.steady(60, .watts(250)), .steady(60, .watts(120))])])
+        let e = WorkoutEngine(workout: w, ftp: 245, source: MockSource())
+        #expect(e.blockNumber == nil)                          // avant le départ
+        e.start(at: t0, autoTick: false)
+        #expect(e.blockNumber?.index == 1)
+        #expect(e.blockNumber?.count == 7)                     // 1 + 3 × 2
+        e.skipSegment(now: t0.addingTimeInterval(1))
+        #expect(e.blockNumber?.index == 2)
+        for i in 2...7 { e.skipSegment(now: t0.addingTimeInterval(TimeInterval(i))) }
+        #expect(e.blockNumber == nil)                          // séance terminée
+        #expect(WorkoutEngine(workout: nil, ftp: 245, source: MockSource()).blockNumber == nil)
+    }
+
+    // Watts : vert à ±5 % de la cible, sinon orange avec « Accélère » / « Ralentis ».
+    @Test func powerGuidanceAroundTarget() {
+        #expect(PowerGuidance(power: 200, target: 200) == .onTarget)
+        #expect(PowerGuidance(power: 190, target: 200) == .onTarget)       // −5 % : encore bon
+        #expect(PowerGuidance(power: 210, target: 200) == .onTarget)       // +5 %
+        #expect(PowerGuidance(power: 189, target: 200) == .tooLow)
+        #expect(PowerGuidance(power: 211, target: 200) == .tooHigh)
+        #expect(PowerGuidance(power: nil, target: 200) == nil)
+        #expect(PowerGuidance(power: 150, target: nil) == nil)              // sortie libre
+        #expect(PowerGuidance(power: 150, target: 0) == nil)
+        #expect(PowerGuidance.tooLow.advice == "Accélère")
+        #expect(PowerGuidance.tooHigh.advice == "Ralentis")
+        #expect(PowerGuidance.onTarget.advice == nil)
+    }
+
     // Régression : séance terminée, roue libre → le curseur et la courbe réelle sortaient du
     // profil par la droite. Ils s'arrêtent au bout de la séance.
     @Test func chartMarksStayInsideTheWorkoutAfterTheEnd() {

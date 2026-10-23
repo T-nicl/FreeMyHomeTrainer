@@ -90,6 +90,13 @@ final class WorkoutEngine {
 
     var segmentRemaining: TimeInterval? { currentSegment.map { $0.end - position } }
 
+    /// Numéro du bloc en cours et nombre de blocs, répétitions déroulées (« Bloc 2/10 ») ;
+    /// nil sans bloc.
+    var blockNumber: (index: Int, count: Int)? {
+        guard let i = segmentIndex, let tl = timeline, !isWorkoutComplete else { return nil }
+        return (i + 1, tl.segments.count)
+    }
+
     /// Avancement dans le bloc en cours, de 0 à 1 (barre de progression) ; nil sans bloc.
     var segmentProgress: Double? {
         guard let s = currentSegment, !isWorkoutComplete else { return nil }
@@ -289,5 +296,25 @@ enum RepeatingTimer {
         }
         RunLoop.main.add(timer, forMode: .common)
         return timer
+    }
+}
+
+/// Écart à la cible : bon à ±5 %, sinon trop bas ou trop haut (watts en orange et consigne).
+enum PowerGuidance: Equatable, Sendable {
+    case onTarget, tooLow, tooHigh
+
+    /// nil sans puissance mesurée ou sans cible (sortie libre).
+    init?(power: Int?, target: Int?) {
+        guard let power, let target, target > 0 else { return nil }
+        let ratio = Double(power) / Double(target)
+        self = ratio < 0.95 ? .tooLow : ratio > 1.05 ? .tooHigh : .onTarget
+    }
+
+    var advice: String? {
+        switch self {
+        case .onTarget: nil
+        case .tooLow: "Accélère"
+        case .tooHigh: "Ralentis"
+        }
     }
 }
