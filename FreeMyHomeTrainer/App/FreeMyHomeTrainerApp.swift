@@ -1,8 +1,10 @@
+import AppKit
 import SwiftData
 import SwiftUI
 
 @main
 struct FreeMyHomeTrainerApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var devices = DeviceManager()
     @State private var appState = AppState()
     @State private var uploads = UploadCenter()
@@ -14,6 +16,7 @@ struct FreeMyHomeTrainerApp: App {
                 .environment(appState)
                 .environment(uploads)
                 .frame(minWidth: 1000, minHeight: 680)
+                .onAppear { appDelegate.appState = appState }
         }
         .modelContainer(for: [SavedWorkout.self, ActivityRecord.self])
         .windowToolbarStyle(.unified)
@@ -44,6 +47,23 @@ enum AppSection: String, CaseIterable, Identifiable {
     }
 }
 
+/// Quitter l'app (⌘Q) pendant une séance non enregistrée demande confirmation : la séance
+/// n'existe qu'en mémoire tant qu'elle n'est pas enregistrée.
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    weak var appState: AppState?
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard appState?.hasUnsavedRide == true else { return .terminateNow }
+        let alert = NSAlert()
+        alert.messageText = "Une séance est en cours"
+        alert.informativeText = "Elle n'est pas encore enregistrée. Pour la garder, continue puis clique sur « Terminer »."
+        alert.addButton(withTitle: "Continuer la séance")
+        alert.addButton(withTitle: "Quitter sans enregistrer").hasDestructiveAction = true
+        return alert.runModal() == .alertFirstButtonReturn ? .terminateCancel : .terminateNow
+    }
+}
+
 /// État partagé entre les écrans (section affichée, séance en cours).
 @MainActor
 @Observable
@@ -53,6 +73,9 @@ final class AppState {
     var selectedWorkoutID: UUID?
     /// Séance en cours (conservée quand on change d'écran).
     var engine: WorkoutEngine?
+
+    /// Une séance est prête, en cours ou terminée sans avoir pu être enregistrée.
+    var hasUnsavedRide: Bool { engine != nil }
 
     /// Termine la séance en cours et l'enregistre. En cas d'échec, la séance est conservée
     /// (état « terminée ») pour pouvoir réessayer : elle n'est libérée qu'une fois enregistrée.

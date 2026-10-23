@@ -52,11 +52,18 @@ struct HistoryView: View {
         .onAppear { if selection == nil { selection = activities.first?.id } }
     }
 
+    /// La fiche d'abord : le .fit n'est supprimé qu'une fois la suppression enregistrée.
     private func delete(_ activity: ActivityRecord) {
-        if let url = activity.fitFileURL { try? FileManager.default.removeItem(at: url) }
+        let url = activity.fitFileURL
         if selection == activity.id { selection = nil }
         context.delete(activity)
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            return
+        }
+        if let url { try? FileManager.default.removeItem(at: url) }
     }
 }
 

@@ -52,6 +52,11 @@ struct SettingsView: View {
                 LabeledContent("Version", value: Self.version)
             }
         }
+        // Valeurs saisies au clavier : bornées comme le Stepper (cibles et vitesse virtuelle).
+        .onChange(of: ftp) { _, v in if !(50...600).contains(v) { ftp = min(max(v, 50), 600) } }
+        .onChange(of: weight) { _, v in
+            if !(30...200).contains(v) || !v.isFinite { weight = v.isFinite ? min(max(v, 30), 200) : 70 }
+        }
         .formStyle(.grouped)
         .textFieldStyle(.roundedBorder)
         .navigationTitle("Réglages")

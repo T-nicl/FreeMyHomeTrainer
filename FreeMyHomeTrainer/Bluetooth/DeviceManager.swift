@@ -149,7 +149,9 @@ final class DeviceManager: NSObject {
             hasControl = response.success
             if response.success {
                 controlGeneration += 1
-                enqueue(.start)
+                // « Start » avant toute consigne déjà en file : certains trainers refusent une
+                // consigne reçue avant le démarrage.
+                commandQueue.insert(.start, at: 0)
             }
         } else if response.opcode == FTMSCommand.setTargetPower(0).opcode,
                   response.result == FTMSParser.controlNotPermitted {
@@ -180,6 +182,7 @@ final class DeviceManager: NSObject {
     func connect(_ device: DiscoveredDevice) {
         guard let peripheral = candidates[device.id] else { return }
         stopSimulation()
+        stopScan()                       // appareil choisi : inutile de garder la radio en recherche
         connect(peripheral, as: device.kind)
         UserDefaults.standard.set(device.id.uuidString, forKey: device.kind == .trainer ? Keys.trainer : Keys.heartRate)
     }
@@ -276,7 +279,16 @@ extension DeviceManager: @preconcurrency CBCentralManagerDelegate {
         if bluetoothReady {
             reconnectSavedDevices()
         } else {
+            // Bluetooth du Mac coupé : les liens sont perdus ; ne pas afficher « connecté ».
             isScanning = false
+            if trainer != nil {
+                resetTrainerLink()
+                trainerState = .connecting
+            }
+            if hrSensor != nil {
+                heartRate = nil
+                heartRateState = .connecting
+            }
         }
     }
 
@@ -380,7 +392,7 @@ extension DeviceManager: @preconcurrency CBPeripheralDelegate {
         case CBUUID(string: GATT.supportedPowerRange):
             powerRange = FTMSParser.parsePowerRange(data)
         case CBUUID(string: GATT.heartRateMeasurement):
-            if let hr = FTMSParser.parseHeartRate(data) {
+            if let hr = FTMSParser.parseHeartRate(data), hr > 0 {      // 0 = contact perdu
                 heartRate = hr
                 lastHeartRateData = Date()
             }

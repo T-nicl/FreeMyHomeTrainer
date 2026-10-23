@@ -28,7 +28,8 @@ Fenêtre de 1000 × 680 points minimum ; aucun contenu ne doit être coupé à c
   virtuelles, § 2.2).
 - Aperçu : profil, durée, puissance moyenne, note d'intensité, alerte « séance irréaliste »
   (§ 4.3), notes de la séance.
-- **Démarrer** n'est possible que si un trainer est connecté (réel ou simulé). Si la séance
+- **Démarrer** n'est possible que si un trainer est connecté (réel ou simulé) et que la séance
+  n'est pas vide (sinon : « Cette séance est vide »). Si la séance
   demande l'ERG et que le trainer n'a pas accepté le contrôle, un avertissement est affiché.
 
 ### 2.2 Rouler — séance en cours
@@ -77,6 +78,8 @@ sortie ». Une séance arrêtée sans aucun échantillon n'est pas enregistrée.
 **Une séance n'est jamais perdue** : si l'enregistrement échoue, elle reste en mémoire et
 l'alerte propose « Réessayer », « Abandonner la séance… » (avec confirmation) ou « Plus tard »
 (« Terminer » relance l'enregistrement). Aucun demi-enregistrement : ni fiche, ni .fit orphelin.
+**Quitter l'app (⌘Q)** pendant une séance non enregistrée (prête, en cours ou en échec
+d'enregistrement) demande confirmation : « Continuer la séance » ou « Quitter sans enregistrer ».
 
 ### 2.5 Séances (bibliothèque et éditeur)
 **Liste** (colonne de gauche) :
@@ -164,10 +167,12 @@ Règles :
   tableau des intervalles (durée, cible, puissance moyenne et max, FC, cadence).
 - Envoi Garmin : « Envoyer sur Garmin », état (en cours, ✓, échec + « Renvoyer »), message
   d'erreur. **Exporter le .FIT…** à tout moment. Suppression avec confirmation (la sortie reste
-  sur Garmin / Strava si elle y a été envoyée).
+  sur Garmin / Strava si elle y a été envoyée) ; le .fit n'est effacé qu'une fois la suppression
+  de la fiche enregistrée.
 
 ### 2.7 Réglages
-- Profil : **FTP** (50 à 600 W, défaut 200), **poids** (défaut 70 kg), rapport W/kg.
+- Profil : **FTP** (50 à 600 W, défaut 200), **poids** (30 à 200 kg, défaut 70), rapport W/kg ;
+  une valeur saisie hors bornes est ramenée dans les bornes.
 - Comptes : **Connecter Garmin** (e-mail, mot de passe, puis code de vérification si la double
   authentification est active), Déconnecter, option **envoi automatique** (désactivée par
   défaut), aide pour activer la synchronisation Garmin → Strava.
@@ -270,11 +275,14 @@ moyenne et max (hors 0), cadence moyenne (hors arrêts), distance.
 
 - **Home trainer** : FTMS (service 0x1826) — Indoor Bike Data, Control Point (prise de contrôle,
   démarrage, puissance cible, simulation de pente), plage de puissance, état. Une seule
-  commande à la fois ; une consigne en attente remplace la précédente ; délai de 2 s.
+  commande à la fois ; une consigne en attente remplace la précédente ; délai de 2 s. Après la
+  prise de contrôle, « démarrage » passe avant toute consigne en attente.
 - **Cardio** : service Heart Rate (0x180D), FC sur 8 ou 16 bits ; à défaut, la FC remontée par
   le trainer.
 - Mesures considérées perdues après 3 s (trainer) / 5 s (cardio) sans données.
-- Appareils mémorisés et reconnectés automatiquement ; reconnexion après une coupure.
+- Appareils mémorisés et reconnectés automatiquement ; reconnexion après une coupure ou après
+  avoir coupé puis rallumé le Bluetooth du Mac (états « connexion… » entre-temps). La recherche
+  s'arrête dès qu'un appareil est choisi. Une FC à 0 (contact perdu) est ignorée.
 - **Trainer simulé** : suit la consigne avec inertie et bruit, cadence ≈ 88, FC liée à la puissance.
 
 ## 6. Enregistrement et envoi

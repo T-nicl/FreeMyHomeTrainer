@@ -137,6 +137,9 @@ private struct RideSetupView: View {
                         if devices.trainerState != .connected {
                             Label("Connecte un home trainer ou active le simulateur.", systemImage: "info.circle")
                                 .foregroundStyle(.secondary)
+                        } else if let workout = selectedWorkout, !workout.isRideable(ftp: ftp) {
+                            Label("Cette séance est vide : ajoute-lui des blocs dans Séances.", systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(.orange)
                         } else if selectedWorkout != nil, !devices.hasControl {
                             Label("Le trainer n'a pas encore accepté le mode ERG.", systemImage: "exclamationmark.triangle")
                                 .foregroundStyle(.orange)
@@ -150,7 +153,7 @@ private struct RideSetupView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.extraLarge)
                     .fixedSize()
-                    .disabled(devices.trainerState != .connected)
+                    .disabled(devices.trainerState != .connected || selectedWorkout?.isRideable(ftp: ftp) == false)
                     .keyboardShortcut(.defaultAction)
                 }
             }

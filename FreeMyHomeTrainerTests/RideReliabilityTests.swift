@@ -215,6 +215,26 @@ struct RideReliabilityTests {
         #expect(WorkoutProfileChart.withinWorkout(samples, duration: 3_600).map(\.elapsed) == [3_590, 3_600])
     }
 
+    // Relecture avant release : un ⌘Q par erreur ne doit pas perdre une séance non enregistrée.
+    @Test func quittingIsConfirmedWhileARideIsUnsaved() {
+        let state = AppState()
+        #expect(!state.hasUnsavedRide)
+        let e = engine(MockSource())
+        state.engine = e
+        #expect(state.hasUnsavedRide)                       // prête ou en cours
+        e.start(at: t0, autoTick: false)
+        e.finish(now: t0.addingTimeInterval(10))
+        #expect(state.hasUnsavedRide)                       // terminée mais pas encore enregistrée
+        state.engine = nil
+        #expect(!state.hasUnsavedRide)
+    }
+
+    // Relecture avant release : une séance vide ne se démarre pas (le trainer resterait sans consigne).
+    @Test func emptyWorkoutCannotBeRidden() {
+        #expect(Workout.samples[0].isRideable(ftp: 245))
+        #expect(!Workout(name: "Vide", blocks: []).isRideable(ftp: 245))
+    }
+
     // Lot 4 — la courbe en direct ne doit pas « glisser » : le pas de sous-échantillonnage
     // change rarement (puissances de 2), et pas toutes les 15 minutes.
     @Test func liveChartStrideIsStable() {

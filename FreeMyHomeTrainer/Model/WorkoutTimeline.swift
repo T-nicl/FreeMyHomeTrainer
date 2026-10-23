@@ -142,6 +142,11 @@ enum PowerZone: Int, CaseIterable, Sendable {
     }
 }
 
+extension Workout {
+    /// Une séance sans aucun bloc ne se roule pas : le trainer resterait sans consigne.
+    func isRideable(ftp: Int) -> Bool { WorkoutTimeline(workout: self, ftp: ftp).duration > 0 }
+}
+
 enum Format {
     /// 3725 → "1:02:05", 600 → "10:00"
     static func clock(_ t: TimeInterval) -> String {
