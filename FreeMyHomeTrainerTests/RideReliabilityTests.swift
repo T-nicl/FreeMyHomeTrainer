@@ -136,4 +136,46 @@ struct RideReliabilityTests {
             try? FileManager.default.removeItem(at: url)
         }
     }
+
+    // Lot 4 — « Suivant » en pause : l'intervalle affiché et le tour sont mis à jour tout de suite.
+    @Test func skippingWhilePausedUpdatesTheInterval() {
+        let source = MockSource()
+        let e = engine(source)
+        e.start(at: t0, autoTick: false)
+        for i in 1...5 { e.tick(now: t0.addingTimeInterval(TimeInterval(i))) }
+        e.togglePause()
+        e.skipSegment(now: t0.addingTimeInterval(6))
+        #expect(e.currentSegment?.start == 600)
+        #expect(e.segmentRemaining == 300)
+        #expect(e.laps.count == 1)
+        #expect(source.targets == [250, 120])
+    }
+
+    // Lot 4 — la courbe en direct ne doit pas « glisser » : le pas de sous-échantillonnage
+    // change rarement (puissances de 2), et pas toutes les 15 minutes.
+    @Test func liveChartStrideIsStable() {
+        var changes = 0
+        var previous = Sample.chartStride(count: 1)
+        for count in 1...14_400 {                                   // 4 h à 1 Hz
+            let stride = Sample.chartStride(count: count)
+            if stride != previous { changes += 1; previous = stride }
+            #expect(count / stride <= 900 * 2)                     // jamais plus de ~1 800 points
+        }
+        #expect(changes <= 4)
+    }
+
+    // Lot 4 (relecture) — une séance terminée (par ex. en attente d'enregistrement) ne doit plus
+    // rien envoyer au trainer, même si « Suivant » est encore cliquable.
+    @Test func skippingAfterFinishDoesNothing() {
+        let source = MockSource()
+        let e = engine(source)
+        e.start(at: t0, autoTick: false)
+        for i in 1...5 { e.tick(now: t0.addingTimeInterval(TimeInterval(i))) }
+        e.finish(now: t0.addingTimeInterval(6))
+        let laps = e.laps.count
+        e.skipSegment(now: t0.addingTimeInterval(7))
+        #expect(source.targets == [250])
+        #expect(source.grades == [0])
+        #expect(e.laps.count == laps)
+    }
 }

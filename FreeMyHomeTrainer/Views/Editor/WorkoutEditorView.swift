@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct WorkoutEditorView: View {
@@ -54,7 +55,15 @@ struct WorkoutEditorView: View {
         .onDeleteCommand { deleteSelection() }
         .onChange(of: draft) { _, new in saved.workout = new }
         .onChange(of: nameFocused) { _, focused in if !focused { commitName() } }
-        .onDisappear(perform: commitName)
+        .onDisappear {
+            commitName()
+            dragState.reset()
+        }
+        // Un glisser interrompu (changement d'app, de fenêtre) ne reçoit pas toujours sa fin :
+        // on efface l'étiquette pour qu'elle ne reste pas affichée.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            dragState.reset()
+        }
     }
 
     // MARK: - Sous-vues

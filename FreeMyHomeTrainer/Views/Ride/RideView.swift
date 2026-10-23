@@ -272,7 +272,7 @@ private struct LiveRideView: View {
 
     /// Limite le nombre de points tracés pour garder un affichage fluide.
     private func downsampled(_ samples: [Sample]) -> [Sample] {
-        let stride = max(samples.count / 900, 1)
+        let stride = Sample.chartStride(count: samples.count)
         guard stride > 1 else { return samples }
         return samples.enumerated().compactMap { $0.offset % stride == 0 ? $0.element : nil }
     }

@@ -35,7 +35,8 @@ if [[ $MODE == release ]]; then
     BUILD=$(( $(sed -nE 's/.*CFBundleVersion: "([0-9]+)".*/\1/p' project.yml) + 1 ))
     sed -i '' -E "s/(CFBundleShortVersionString: )\"[^\"]*\"/\1\"$VERSION\"/; s/(CFBundleVersion: )\"[^\"]*\"/\1\"$BUILD\"/" project.yml
     xcodegen generate --quiet
-    git add -A
+    # Uniquement les fichiers de version : jamais un fichier de travail non voulu.
+    git add project.yml FreeMyHomeTrainer.xcodeproj FreeMyHomeTrainer/Support/Info.plist
     git commit -q -m "Version $VERSION"
 fi
 
@@ -64,6 +65,8 @@ print "→ Archive : $ZIP"
 print "→ Publication sur GitHub"
 PREVIOUS=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
 NOTES=$(mktemp)
+trap 'rm -f "$NOTES"' EXIT                 # nettoyé même en cas d'erreur
+SHA256=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)
 {
     print "## Installer"
     print ""
@@ -77,6 +80,10 @@ NOTES=$(mktemp)
     print ""
     print "Nécessite macOS 15 ou plus récent (Mac Apple Silicon ou Intel)."
     print ""
+    print "Empreinte SHA-256 du .zip (pour vérifier qu'il n'a pas été modifié : \`shasum -a 256 FreeMyHomeTrainer-$VERSION.zip\`) :"
+    print ""
+    print "\`$SHA256\`"
+    print ""
     print "## Changements"
     print ""
     git log --pretty='- %s' ${PREVIOUS:+$PREVIOUS..}HEAD | grep -v '^- Version ' || true
@@ -85,5 +92,4 @@ NOTES=$(mktemp)
 git tag -a "v$VERSION" -m "Version $VERSION"
 git push -q --follow-tags
 gh release create "v$VERSION" "$ZIP" --title "FreeMyHomeTrainer $VERSION" --notes-file "$NOTES"
-rm -f "$NOTES"
 print "✓ Version $VERSION publiée : $(gh release view "v$VERSION" --json url --jq .url)"

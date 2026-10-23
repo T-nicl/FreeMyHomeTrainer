@@ -46,6 +46,17 @@ struct Sample: Codable, Hashable, Sendable {
     var target: Int?
 }
 
+extension Sample {
+    /// Pas de sous-échantillonnage de la courbe en direct : une puissance de 2, pour qu'il change
+    /// rarement (à 900, 1 800, 3 600… points) et que les points tracés restent les mêmes d'une
+    /// seconde à l'autre au lieu de « glisser ».
+    static func chartStride(count: Int, maxPoints: Int = 900) -> Int {
+        var stride = 1
+        while count / stride > maxPoints { stride *= 2 }
+        return stride
+    }
+}
+
 /// Un tour (lap) : un segment de la séance.
 struct Lap: Codable, Hashable, Sendable {
     var startTime: Date
@@ -78,6 +89,7 @@ final class ActivityRecord {
     var avgCadence: Int?
     var kilojoules: Double = 0
 
+    /// Ne modifier qu'à travers `samples` (qui tient le cache à jour).
     @Attribute(.externalStorage) var samplesData: Data = Data()
     var lapsData: Data = Data()
     var fitFileName: String?
@@ -91,9 +103,20 @@ final class ActivityRecord {
         self.ftp = ftp
     }
 
+    /// Décodés une seule fois puis gardés en mémoire (l'historique les lit souvent).
+    @Transient private var samplesCache: [Sample]? = nil
+
     var samples: [Sample] {
-        get { (try? JSONDecoder().decode([Sample].self, from: samplesData)) ?? [] }
-        set { samplesData = (try? JSONEncoder().encode(newValue)) ?? Data() }
+        get {
+            if let samplesCache { return samplesCache }
+            let decoded = (try? JSONDecoder().decode([Sample].self, from: samplesData)) ?? []
+            samplesCache = decoded
+            return decoded
+        }
+        set {
+            samplesData = (try? JSONEncoder().encode(newValue)) ?? Data()
+            samplesCache = newValue
+        }
     }
 
     var laps: [Lap] {

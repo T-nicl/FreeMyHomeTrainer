@@ -127,9 +127,11 @@ final class WorkoutEngine {
 
     /// Passe directement à l'intervalle suivant (le temps sauté n'est pas compté comme roulé).
     func skipSegment(now: Date = Date()) {
-        guard let segment = currentSegment else { return }
+        guard isActive, let segment = currentSegment else { return }   // rien après « Terminer »
         position = segment.end
-        tick(now: now, advanceClock: false)
+        // Mise à jour directe (et non via `tick`, qui s'arrête en pause et compterait une seconde
+        // mesure de puissance) : intervalle, tour et consigne changent tout de suite.
+        updateTarget(now: now, force: true)
     }
 
     func adjustIntensity(by delta: Double, now: Date = Date()) {
