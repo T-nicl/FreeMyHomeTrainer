@@ -40,6 +40,15 @@ struct SettingsView: View {
             }
 
             Section {
+                AssistantSettingsPanel()
+            } header: {
+                Text("Assistant IA")
+            } footer: {
+                Text("« Créer avec l'IA » (liste des séances) utilise Ollama, qui fait tourner le modèle sur ton Mac : rien n'est envoyé en ligne. Installation : « brew install ollama », « brew services start ollama », puis « ollama pull \(OllamaClient.defaultModel) » (≈ 4,7 Go). L'app Ollama (ollama.com) convient aussi.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 LabeledContent("Version", value: Self.version)
             }
         }

@@ -26,6 +26,9 @@ targets:
         CFBundleVersion: "1"
         LSApplicationCategoryType: public.app-category.healthcare-fitness
         NSBluetoothAlwaysUsageDescription: "FreeMyHomeTrainer se connecte en Bluetooth à ton home trainer et à ta ceinture cardio."
+        # Ollama (LLM local) répond en HTTP sur localhost ou le réseau local.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     entitlements:
       path: FreeMyHomeTrainer/Support/FreeMyHomeTrainer.entitlements
       properties:

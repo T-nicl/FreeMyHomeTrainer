@@ -42,7 +42,7 @@ open build/Build/Products/Debug/FreeMyHomeTrainer.app
 | `Model/` | `Workout` / `WorkoutBlock` (JSON simple, prévu pour être généré par un LLM), `WorkoutTimeline` (aplatissement), `IntensityRating` (note 1–5), opérations d'arbre de blocs, SwiftData (`SavedWorkout`, `ActivityRecord`) |
 | `Bluetooth/` | `DeviceManager` (CoreBluetooth, FTMS + cardio, reconnexion), `FTMSParser`, `SimulatedTrainer` |
 | `Engine/` | `WorkoutEngine` (déroulé, consignes ERG, pauses), `VirtualBike` (vitesse/distance fictives), `ActivityMetrics` |
-| `Export/` | `FITEncoder` (maison), `GarminClient` (non officiel), `UploadCenter`, Trousseau |
+| `Export/` | `FITEncoder` (maison), `GarminClient` (non officiel), `UploadCenter`, Trousseau, `OllamaClient` |
 | `Views/` | Rouler (écran d'accueil, mini-fenêtre flottante), Séances (éditeur), Historique, Réglages |
 
 ## Choix à respecter
@@ -67,6 +67,11 @@ open build/Build/Products/Debug/FreeMyHomeTrainer.app
   jetons vont dans le Trousseau. **Envoi automatique désactivé par défaut** (phase de test).
 - **Secrets hors du dépôt** : `Config/Local.xcconfig` (signature Apple) est ignoré par git ; un
   ami compile avec la signature locale par défaut. Dépôt public : github.com/T-nicl/FreeMyHomeTrainer.
+- **Création par LLM (Ollama, local)** : le modèle remplit un `WorkoutPlan` (échauffement, séries,
+  retour au calme ; schéma JSON imposé via `format`), l'app construit les blocs puis valide
+  (`WorkoutLimits`, un seul essai de réparation). Ne pas redemander l'arbre de blocs complet :
+  Qwen 2.5 7B le compose mal. Retoucher le prompt (`WorkoutPrompt`) → relancer l'évaluation réelle
+  `TEST_RUNNER_OLLAMA_EVAL=1 … -only-testing:FreeMyHomeTrainerTests/OllamaEvaluation`.
 
 ## Pièges connus (déjà rencontrés)
 
@@ -117,8 +122,3 @@ avant de publier** (release publique).
 Messages en français, première ligne courte, détail si utile, terminés par :
 `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. L'e-mail git du dépôt est l'adresse
 masquée GitHub de l'utilisateur. Pousser sur `main` après chaque lot validé.
-
-## Plus tard
-
-Génération de séances par LLM local (Ollama / Mistral, « séance tempo 3x10' ») produisant le JSON
-de `Workout` (voir le README), puis affichage dans l'éditeur pour validation.

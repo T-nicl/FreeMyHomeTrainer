@@ -17,6 +17,8 @@ Garmin Connect, qui la transmet à Strava.
 - **Historique** avec courbes et intervalles, export `.fit`.
 - **Envoi** sur Garmin Connect (manuel, ou automatique en option), puis Strava via la
   synchronisation Garmin → Strava.
+- **Créer une séance avec l'IA** en la décrivant (« séance tempo 3x10' »), puis l'ajuster
+  (« un peu plus dur ») : modèle de langage **local** via Ollama, rien n'est envoyé en ligne.
 - **Trainer simulé** pour essayer l'app sans vélo.
 
 ## Installer l'app (sans Xcode)
@@ -77,13 +79,30 @@ l'app mobile Garmin Connect — même méthode que la librairie open source
 connexion ; l'export `.fit` depuis l'historique reste possible pour un import manuel sur
 connect.garmin.com ou strava.com.
 
+## Créer des séances avec l'IA (facultatif)
+
+Le bouton ✨ de la liste des séances utilise [Ollama](https://ollama.com), qui fait tourner un
+modèle de langage sur ton Mac (gratuit, hors ligne). Dans le Terminal :
+
+```sh
+brew install ollama
+brew services start ollama      # lance Ollama, et à chaque démarrage du Mac
+ollama pull qwen2.5:7b          # le modèle par défaut, ≈ 4,7 Go
+```
+
+(Sans Homebrew : installe l'app depuis ollama.com, puis `ollama pull qwen2.5:7b`.) Un Mac Apple
+Silicon avec 16 Go de mémoire est confortable. Dans **Réglages › Assistant IA**, tu peux choisir
+un autre modèle installé et vérifier la connexion.
+
 ## Développement
 
 - Spécification fonctionnelle (écrans, règles de calcul, format des séances) : [SPEC.md](SPEC.md).
 - SwiftUI + Swift 6, SwiftData, Swift Charts, CoreBluetooth. Aucune dépendance externe.
 - Le projet Xcode est généré par [XcodeGen](https://github.com/yonaskolb/XcodeGen) à partir de
   `project.yml` : après une modification de `project.yml`, lance `xcodegen generate`.
-- Tests : `xcodebuild -scheme FreeMyHomeTrainer test` (ou ⌘U dans Xcode).
+- Tests : `xcodebuild -scheme FreeMyHomeTrainer test` (ou ⌘U dans Xcode). Évaluation du
+  générateur avec le vrai modèle (lente) : `TEST_RUNNER_OLLAMA_EVAL=1 xcodebuild … test
+  -only-testing:FreeMyHomeTrainerTests/OllamaEvaluation` (`TEST_RUNNER_OLLAMA_MODEL` pour un autre modèle).
 - Publier une version : `scripts/release.sh X.Y.Z` (build universel signé, `.zip`, release
   GitHub). `scripts/release.sh --build-only` fabrique seulement le `.zip`.
 
@@ -92,11 +111,11 @@ connect.garmin.com ou strava.com.
 | `Model/` | Séances (format JSON), timeline, note d'intensité, persistance |
 | `Bluetooth/` | FTMS (trainer), cardio, trainer simulé |
 | `Engine/` | Déroulé de la séance, enregistrement, statistiques |
-| `Export/` | Encodeur `.fit`, envoi Garmin |
+| `Export/` | Encodeur `.fit`, envoi Garmin, client Ollama |
 | `Views/` | Interface SwiftUI |
 
-Le format JSON des séances est volontairement simple pour qu'un LLM (Ollama, Mistral…) puisse
-plus tard générer une séance à partir d'une phrase comme « séance tempo 3x10' » :
+Le format JSON des séances est volontairement simple pour qu'un LLM puisse le produire
+(« Créer avec l'IA » s'en sert, voir `Model/WorkoutGenerator.swift`) :
 
 ```json
 {"name": "Tempo 3x10'", "blocks": [

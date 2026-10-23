@@ -10,6 +10,7 @@ struct LibraryView: View {
     @AppStorage(Settings.ftpKey) private var ftp = 200
     @State private var selection: SavedWorkout.ID?
     @State private var pendingDeletion: SavedWorkout?
+    @State private var showsAssistant = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -62,6 +63,9 @@ struct LibraryView: View {
         } message: {
             Text("La séance sera définitivement supprimée. L'historique des sorties n'est pas touché.")
         }
+        .sheet(isPresented: $showsAssistant) {
+            WorkoutAssistantSheet { add($0) }
+        }
         .onAppear {
             normalizeOrder()
             normalizeNames()
@@ -74,6 +78,11 @@ struct LibraryView: View {
         HStack {
             Text("Mes séances").font(.headline)
             Spacer()
+            Button { showsAssistant = true } label: { Image(systemName: "sparkles") }
+                .accessibilityLabel("Créer avec l'IA")
+                .controlSize(.small)
+                .help("Créer une séance avec l'IA, en la décrivant en quelques mots (⇧⌘N)")
+                .keyboardShortcut("n", modifiers: [.command, .shift])
             Button { create() } label: { Label("Nouvelle séance", systemImage: "plus") }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
@@ -146,8 +155,13 @@ struct LibraryView: View {
             .repeats(3, [.steady(600, watts(0.9)), .steady(300, watts(0.55))]),
             .steady(300, watts(0.5)),
         ])
-        var named = w
-        named.name = WorkoutNaming.unique(w.name, among: workouts.map(\.name))
+        add(w)
+    }
+
+    /// Ajoute en tête de liste, avec un nom unique, et l'ouvre dans l'éditeur.
+    private func add(_ workout: Workout) {
+        var named = workout
+        named.name = WorkoutNaming.unique(workout.name, among: workouts.map(\.name))
         let saved = SavedWorkout(named)
         context.insert(saved)
         renumber([saved] + workouts)          // en tête de liste

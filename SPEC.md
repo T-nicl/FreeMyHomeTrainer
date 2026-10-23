@@ -62,6 +62,7 @@ l'alerte propose « Réessayer », « Abandonner la séance… » (avec confirma
 ### 2.5 Séances (bibliothèque et éditeur)
 **Liste** (colonne de gauche) :
 - En-tête « Mes séances » avec **Nouvelle séance** (⌘N) ; la nouvelle séance arrive en tête.
+  Bouton **étincelles** (⇧⌘N) : « Créer avec l'IA » (§ 2.5 bis).
 - Chaque ligne : nom, durée, mini-profil, note d'intensité.
 - **Ordre manuel** par glisser-déposer, enregistré.
 - Sous la liste : **Dupliquer** (la copie se place sous l'original) et **Supprimer**.
@@ -103,6 +104,40 @@ sont renumérotés à l'ouverture de la liste.
   dans ses propres sous-blocs : annulé (étiquette semi-transparente).
 - Les **répétitions peuvent s'imbriquer** à toute profondeur (ex. 2 × (8 × 1'/1') + récup).
 
+### 2.5 bis Créer avec l'IA (LLM local)
+Fenêtre ouverte depuis la liste des séances : on décrit la séance en français (« séance tempo
+3x10' ») et un LLM **local** (Ollama, sur le Mac de l'utilisateur, rien n'est envoyé en ligne)
+la construit.
+- Champ de demande (↩ ou **Créer**) et exemples cliquables (tempo, sweet spot, VO2 max, 30/30,
+  endurance, pyramide).
+- Pendant la génération (quelques secondes à une minute) : indicateur et **Interrompre**.
+- **Aperçu** : nom, notes, résumé (durée, puissance moyenne, intensité), profil avec la FTP,
+  bandeau « séance irréaliste » le cas échéant.
+- **Ajuster…** (« un peu plus dur », « échauffement plus long ») : le modèle reçoit la séance
+  affichée et renvoie la séance complète modifiée. Un échec garde la séance précédente.
+- **Ajouter à mes séances** : en tête de liste, nom rendu unique, ouverte dans l'éditeur.
+  **Annuler** : rien n'est créé.
+- Erreurs en français : Ollama ne répond pas (le lancer), modèle absent (`ollama pull …`),
+  délai dépassé, réponse inattendue, séance invalide après réparation.
+
+Règles :
+- Requête `POST /api/chat` d'Ollama, sans streaming, réponse plafonnée (2 000 jetons, 1 Mo).
+- Le modèle ne compose pas les blocs : il remplit un **plan** dont chaque champ est obligatoire
+  (schéma JSON passé en `format`) : nom, notes, minutes d'échauffement, **séries** (nombre,
+  efforts en minutes et watts, récupération en minutes et watts), minutes de retour au calme.
+  L'app en fait la séance : échauffement en rampe 45 → 70 % FTP, chaque série répétée (répétition
+  si nombre > 1, récupération omise si 0 minute), retour au calme en rampe 60 → 40 % FTP, watts
+  arrondis à 5 W. (Avec l'arbre de blocs complet, Qwen 2.5 7B oubliait récupérations et
+  échauffement et confondait minutes et secondes.)
+- Consignes au modèle : FTP et zones de Coggan **en watts**, vocabulaire (tempo ≈ 85 %, sweet spot
+  ≈ 90 %, seuil ≈ 100 %, VO2 ≈ 115 %), récupérations par défaut, cinq plans d'exemple calculés
+  pour la FTP de l'utilisateur.
+- La séance obtenue passe par les limites du § 3. Refusée (ou plan illisible) → **un seul**
+  nouvel essai, en renvoyant le message d'erreur au modèle ; sinon, erreur affichée.
+- Adresse d'Ollama : HTTP en clair seulement vers le Mac ou le réseau local, HTTPS ailleurs ;
+  redirections non suivies.
+- Conversation envoyée : consignes, demande d'origine et derniers échanges (10 messages au plus).
+
 ### 2.6 Historique
 - Liste des sorties : nom, date, temps, puissance moyenne, note d'intensité.
 - Détail : durée, distance, vitesse moyenne, puissance moyenne et max, intensité, FC moyenne /
@@ -117,6 +152,9 @@ sont renumérotés à l'ouverture de la liste.
 - Comptes : **Connecter Garmin** (e-mail, mot de passe, puis code de vérification si la double
   authentification est active), Déconnecter, option **envoi automatique** (désactivée par
   défaut), aide pour activer la synchronisation Garmin → Strava.
+- Assistant IA : **adresse d'Ollama** (défaut `http://localhost:11434`, http/https, hôte et port
+  seulement), **modèle** (modèles installés ; défaut `qwen2.5:7b`), état de la connexion testé à
+  l'ouverture et via **Tester** (modèle non installé signalé), aide à l'installation.
 - Numéro de version de l'app.
 
 ## 3. Séances : modèle et format
@@ -255,5 +293,5 @@ direct vers Strava, mode pente réaliste (parcours), applications iOS / Windows.
 
 ## 9. Évolutions prévues
 
-- Génération de séances par LLM local (Ollama / Mistral) : « séance tempo 3x10' » → JSON du § 3,
-  affiché dans l'éditeur pour validation avant enregistrement.
+
+Aucune pour le moment.

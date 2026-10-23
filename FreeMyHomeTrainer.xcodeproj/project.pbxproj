@@ -12,7 +12,9 @@
 		1C4CC8D18FC9DE5F13510ED3 /* WorkoutTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = C79796A57C74986BB00360DD /* WorkoutTimeline.swift */; };
 		1F5DD6313D9D13C7C4E41754 /* ActivityMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B74FE814B76070EBE93518B /* ActivityMetrics.swift */; };
 		36F11621AA0357C40982410E /* WorkoutEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE5EC75BB4ECD5680A918C05 /* WorkoutEditorView.swift */; };
+		3A404D488861CAB50B284958 /* WorkoutGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBF68DBEB0CD745EB9F9090A /* WorkoutGeneratorTests.swift */; };
 		3BF417E51C42B6DB60312214 /* FITEncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 644C7DDB4B9C2D789D3F8471 /* FITEncoder.swift */; };
+		4564D0A7FD53DC5707FFDA2D /* OllamaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B45ED558162607B87AEFE952 /* OllamaClient.swift */; };
 		480CE64496E34821DEEACF64 /* FreeMyHomeTrainerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC5C6043E92773BA6BDA051D /* FreeMyHomeTrainerApp.swift */; };
 		5068C90E04A25EB1C9FF2387 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C111AB9282A975E007065D14 /* Keychain.swift */; };
 		58BAC254DEE32E3C97DEEAB3 /* FTMSParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91243D630AAA1070AD1E18FD /* FTMSParser.swift */; };
@@ -39,9 +41,12 @@
 		C025D0B9E9631877343B2F8D /* WorkoutSanity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15745E1CC2913E9808775697 /* WorkoutSanity.swift */; };
 		C8B7DFF366DFB64210E4CA8B /* BlockTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 215AB9F2542D404814BE3ED7 /* BlockTimeline.swift */; };
 		CC3120580A07A891207C3F1E /* FreeMyHomeTrainerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDA9852FB01644CBB5AE1C38 /* FreeMyHomeTrainerTests.swift */; };
+		D1425A36B5DCDDA62CF27A99 /* WorkoutGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F953348F03E01E54141D3A /* WorkoutGenerator.swift */; };
 		D20A3650EF1CE02A0F07BC1C /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109712EFD67599863D69D861 /* HistoryView.swift */; };
+		D4ABAD15B5E2FABFA14F09DA /* AssistantSettingsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3333C0C9F7DA9CA36E21D894 /* AssistantSettingsPanel.swift */; };
 		D8FEE126465BB8D0EAA04723 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F76FA204368AE0929BEDBCC0 /* LibraryView.swift */; };
 		E25AA9039A490A0E1F12A6AF /* GarminClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F6E3CB37160804060EB7AF0 /* GarminClient.swift */; };
+		ECBB83C29D26F6E55C1600AE /* WorkoutAssistantSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43807CC5C5B7F4DBC7293FAC /* WorkoutAssistantSheet.swift */; };
 		F366C07C9C76EE354FD355F6 /* BlockEditBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64D27D8B13E9D37C32DA2AD2 /* BlockEditBar.swift */; };
 /* End PBXBuildFile section */
 
@@ -64,9 +69,11 @@
 		215AB9F2542D404814BE3ED7 /* BlockTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockTimeline.swift; sourceTree = "<group>"; };
 		21FC1026EBB5CB11A1DE1B4E /* Workout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workout.swift; sourceTree = "<group>"; };
 		26B2CEC85A53C5623DE458F7 /* AccountsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountsPanel.swift; sourceTree = "<group>"; };
+		3333C0C9F7DA9CA36E21D894 /* AssistantSettingsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantSettingsPanel.swift; sourceTree = "<group>"; };
 		354CB7618529C0BA2869063F /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
 		3722F2EE869D6B3C8F339894 /* IntensityRating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntensityRating.swift; sourceTree = "<group>"; };
 		3CE1FBDC32370741BBD0A752 /* DevicesPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesPanel.swift; sourceTree = "<group>"; };
+		43807CC5C5B7F4DBC7293FAC /* WorkoutAssistantSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutAssistantSheet.swift; sourceTree = "<group>"; };
 		4BEF7C745427FCA98BBF8B7D /* WorkoutEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutEngine.swift; sourceTree = "<group>"; };
 		4D9EF818FF8AB1533B7AA029 /* RideScreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideScreenTests.swift; sourceTree = "<group>"; };
 		4F6E3CB37160804060EB7AF0 /* GarminClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GarminClient.swift; sourceTree = "<group>"; };
@@ -81,6 +88,7 @@
 		762D255797D536FD6F0E4BDE /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		81FBACACD07BDF2F44512052 /* FreeMyHomeTrainerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FreeMyHomeTrainerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		91243D630AAA1070AD1E18FD /* FTMSParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FTMSParser.swift; sourceTree = "<group>"; };
+		96F953348F03E01E54141D3A /* WorkoutGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutGenerator.swift; sourceTree = "<group>"; };
 		975D3896F35C1AD4C1FC0CDC /* BlockDrag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDrag.swift; sourceTree = "<group>"; };
 		9B74FE814B76070EBE93518B /* ActivityMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityMetrics.swift; sourceTree = "<group>"; };
 		9D35515D18748CBAFAD62E72 /* WorkoutBlockTree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutBlockTree.swift; sourceTree = "<group>"; };
@@ -88,7 +96,9 @@
 		A98B80760D196779B17F585A /* FreeMyHomeTrainer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FreeMyHomeTrainer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AC5C6043E92773BA6BDA051D /* FreeMyHomeTrainerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FreeMyHomeTrainerApp.swift; sourceTree = "<group>"; };
 		ACE0A0A76F0405938A09ADD9 /* ActivitySaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitySaver.swift; sourceTree = "<group>"; };
+		B45ED558162607B87AEFE952 /* OllamaClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaClient.swift; sourceTree = "<group>"; };
 		BB8394D2A40CB6C42A11EEC6 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		BBF68DBEB0CD745EB9F9090A /* WorkoutGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutGeneratorTests.swift; sourceTree = "<group>"; };
 		C111AB9282A975E007065D14 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		C255B47FF28AA8FADE8E9568 /* FreeMyHomeTrainer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FreeMyHomeTrainer.entitlements; sourceTree = "<group>"; };
 		C79796A57C74986BB00360DD /* WorkoutTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTimeline.swift; sourceTree = "<group>"; };
@@ -104,6 +114,7 @@
 			isa = PBXGroup;
 			children = (
 				26B2CEC85A53C5623DE458F7 /* AccountsPanel.swift */,
+				3333C0C9F7DA9CA36E21D894 /* AssistantSettingsPanel.swift */,
 				BB8394D2A40CB6C42A11EEC6 /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -129,6 +140,7 @@
 			isa = PBXGroup;
 			children = (
 				F76FA204368AE0929BEDBCC0 /* LibraryView.swift */,
+				43807CC5C5B7F4DBC7293FAC /* WorkoutAssistantSheet.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -159,6 +171,7 @@
 				354CB7618529C0BA2869063F /* Persistence.swift */,
 				21FC1026EBB5CB11A1DE1B4E /* Workout.swift */,
 				9D35515D18748CBAFAD62E72 /* WorkoutBlockTree.swift */,
+				96F953348F03E01E54141D3A /* WorkoutGenerator.swift */,
 				15745E1CC2913E9808775697 /* WorkoutSanity.swift */,
 				C79796A57C74986BB00360DD /* WorkoutTimeline.swift */,
 			);
@@ -232,6 +245,7 @@
 				644C7DDB4B9C2D789D3F8471 /* FITEncoder.swift */,
 				4F6E3CB37160804060EB7AF0 /* GarminClient.swift */,
 				C111AB9282A975E007065D14 /* Keychain.swift */,
+				B45ED558162607B87AEFE952 /* OllamaClient.swift */,
 				9FC6EA4601DAA49D08E8F024 /* UploadCenter.swift */,
 			);
 			path = Export;
@@ -286,6 +300,7 @@
 				CDA9852FB01644CBB5AE1C38 /* FreeMyHomeTrainerTests.swift */,
 				E1D64BB37CE61542C52BE430 /* RideReliabilityTests.swift */,
 				4D9EF818FF8AB1533B7AA029 /* RideScreenTests.swift */,
+				BBF68DBEB0CD745EB9F9090A /* WorkoutGeneratorTests.swift */,
 				193EF11B0471FA99544244B8 /* WorkoutLimitsTests.swift */,
 			);
 			path = FreeMyHomeTrainerTests;
@@ -389,6 +404,7 @@
 				CC3120580A07A891207C3F1E /* FreeMyHomeTrainerTests.swift in Sources */,
 				AE46687D92E230345571F2D1 /* RideReliabilityTests.swift in Sources */,
 				81BFD4D053C394B5D0F51FC8 /* RideScreenTests.swift in Sources */,
+				3A404D488861CAB50B284958 /* WorkoutGeneratorTests.swift in Sources */,
 				B7411D825FE9443662C68F85 /* WorkoutLimitsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -400,6 +416,7 @@
 				7937BDA3817FF23D5C6E2086 /* AccountsPanel.swift in Sources */,
 				1F5DD6313D9D13C7C4E41754 /* ActivityMetrics.swift in Sources */,
 				B3E0A1EDC6958A374238197E /* ActivitySaver.swift in Sources */,
+				D4ABAD15B5E2FABFA14F09DA /* AssistantSettingsPanel.swift in Sources */,
 				65F1B7547D8B7CF3FFF06691 /* BlockDrag.swift in Sources */,
 				F366C07C9C76EE354FD355F6 /* BlockEditBar.swift in Sources */,
 				C8B7DFF366DFB64210E4CA8B /* BlockTimeline.swift in Sources */,
@@ -414,6 +431,7 @@
 				5068C90E04A25EB1C9FF2387 /* Keychain.swift in Sources */,
 				D8FEE126465BB8D0EAA04723 /* LibraryView.swift in Sources */,
 				0C1F07620DACCBF5AEE611EE /* MiniOverlay.swift in Sources */,
+				4564D0A7FD53DC5707FFDA2D /* OllamaClient.swift in Sources */,
 				9DCF763CC0A52C71CD4D95D2 /* Persistence.swift in Sources */,
 				60DF425AFA23E894C641012F /* RideView.swift in Sources */,
 				688B90E8F1362EA92D9C6B46 /* SettingsView.swift in Sources */,
@@ -421,9 +439,11 @@
 				5C80F252E2BF580A4342CD2B /* UploadCenter.swift in Sources */,
 				64687CD55F2963B035A3941A /* VirtualBike.swift in Sources */,
 				9B7C4CD82C22DA079EB9E301 /* Workout.swift in Sources */,
+				ECBB83C29D26F6E55C1600AE /* WorkoutAssistantSheet.swift in Sources */,
 				9F4D049B1256E88E6E810718 /* WorkoutBlockTree.swift in Sources */,
 				36F11621AA0357C40982410E /* WorkoutEditorView.swift in Sources */,
 				BFD4339CE1D9D81DFD6D0156 /* WorkoutEngine.swift in Sources */,
+				D1425A36B5DCDDA62CF27A99 /* WorkoutGenerator.swift in Sources */,
 				85E5E4659FB5A6B57E2B5E22 /* WorkoutProfileChart.swift in Sources */,
 				C025D0B9E9631877343B2F8D /* WorkoutSanity.swift in Sources */,
 				1C4CC8D18FC9DE5F13510ED3 /* WorkoutTimeline.swift in Sources */,

@@ -71,10 +71,21 @@ enum Settings {
     static let weightKey = "weightKg"
     static let garminAutoUploadKey = "garminAutoUpload"
     static let seededKey = "didSeedSampleWorkouts"
+    static let ollamaAddressKey = "ollamaAddress"
+    static let ollamaModelKey = "ollamaModel"
 
     static var ftp: Int {
         let v = UserDefaults.standard.integer(forKey: ftpKey)
         return v > 0 ? v : 200
+    }
+
+    /// Générateur de séances avec l'adresse et le modèle des Réglages ; nil si l'adresse est invalide.
+    static var workoutGenerator: WorkoutGenerator? {
+        let defaults = UserDefaults.standard
+        let address = defaults.string(forKey: ollamaAddressKey) ?? OllamaClient.defaultAddress
+        let model = defaults.string(forKey: ollamaModelKey) ?? OllamaClient.defaultModel
+        guard let url = OllamaClient.baseURL(from: address) else { return nil }
+        return WorkoutGenerator(client: OllamaClient(baseURL: url), model: model, ftp: ftp)
     }
 }
 
