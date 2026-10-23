@@ -24,8 +24,8 @@ Fenêtre de 1000 × 680 points minimum ; aucun contenu ne doit être coupé à c
 - Panneau **Capteurs** : état du Bluetooth, home trainer et cardio (nom, état, mesures),
   recherche d'appareils, connexion, « Oublier », bascule **Trainer simulé**.
 - Panneau **Comptes** (compact) : connexion Garmin.
-- Choix de la séance (même ordre que la liste des séances) ou **Sortie libre** (pas de consigne
-  ERG, pente nulle).
+- Choix de la séance (même ordre que la liste des séances) ou **Sortie libre** (vitesses
+  virtuelles, § 2.2).
 - Aperçu : profil, durée, puissance moyenne, note d'intensité, alerte « séance irréaliste »
   (§ 4.3), notes de la séance.
 - **Démarrer** n'est possible que si un trainer est connecté (réel ou simulé). Si la séance
@@ -44,6 +44,17 @@ Disposition inspirée de Zwift, de haut en bas :
   **distance**.
 - Profil complet avec curseur de position et puissance réelle tracée par-dessus ; séance terminée
   (roue libre), le curseur reste au bout du profil et la courbe réelle s'y arrête.
+- **Sortie libre — vitesses virtuelles** : 24 vitesses (du 34 × 34 au 53 × 11, départ sur la 17ᵉ
+  ≈ 50 × 17 ; développements en progression régulière), changées par **− / +** ou les flèches
+  **↓ ↑** (« Vitesse 17/24 »), et dans la mini-fenêtre. La consigne ERG est la puissance d'un vélo
+  sur le plat roulant à cadence × développement (roue de 2,105 m, modèle du § 4.5 : ≈ 200 W à
+  90 rpm sur la 17ᵉ pour 70 kg) ; la vitesse et la distance affichées restent celles du § 4.5,
+  calculées depuis la puissance mesurée. Renvoyée si elle change d'au moins 5 W (au plus 1 fois
+  / s), tout de suite après un changement de vitesse. Sécurité : cadence retenue de 0 à 150 rpm
+  (illisible → 0), consigne de 1 000 W au plus, hausse de 150 W/s au plus (enchaînement de
+  vitesses, pic de capteur) ; **Pause** → consigne à 0 W, reprise → consigne aussitôt rétablie
+  (une vitesse changée en pause s'applique à la reprise). Pas de cible ni de consigne
+  « Accélère / Ralentis ». En séance structurée, pas de vitesses (le mode ERG impose la puissance).
 - Commandes : intensité −5 % / +5 % (flèches ↓ ↑), **Suivant** (passe l'intervalle), **Mini**,
   **Pause** (espace), **Terminer** (avec confirmation).
 - Badges : « En pause », « Pause auto — pédale pour reprendre », « Séance terminée — roue libre ».
@@ -56,7 +67,7 @@ Disposition inspirée de Zwift, de haut en bas :
   écran) ; déplaçable.
 - Contenu : puissance / cible, temps d'intervalle (ou temps écoulé en sortie libre), barre de
   progression de l'intervalle, cardio, cadence, **avancement en blocs** (« Bloc 2/10 »,
-  répétitions déroulées), boutons Pause et « Revenir à l'app ».
+  répétitions déroulées ; « Vitesse 17 » en sortie libre), boutons Pause et « Revenir à l'app ».
 - La fenêtre principale se range dans le Dock et revient au premier plan avec « Revenir ».
   La mini-fenêtre se ferme à la fin de la séance.
 

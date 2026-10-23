@@ -42,6 +42,12 @@ struct VirtualBike: Sendable {
     /// Arrêt immédiat (pause).
     mutating func stop() { speed = 0 }
 
+    /// Puissance (W) à fournir pour rouler à vitesse constante `speed` (m/s).
+    func steadyPower(speed: Double) -> Double {
+        let v = max(speed, 0)
+        return resistance(at: v) * v / drivetrainEfficiency
+    }
+
     /// Vitesse stabilisée (m/s) pour une puissance donnée.
     func steadySpeed(power: Double) -> Double {
         let p = max(power, 0) * drivetrainEfficiency

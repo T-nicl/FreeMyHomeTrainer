@@ -126,7 +126,7 @@ private struct RideSetupView: View {
                         Text(workout.notes).foregroundStyle(.secondary)
                     }
                 } else {
-                    Text("Le trainer reste en mode résistance libre ; la sortie est enregistrée normalement.")
+                    Text("Vitesses virtuelles : change de vitesse avec − / + ou les flèches ↓ ↑, comme sur la route. La sortie est enregistrée normalement.")
                         .foregroundStyle(.secondary)
                 }
 
@@ -221,7 +221,7 @@ private struct LiveRideView: View {
             VStack(spacing: 14) {
                 MetricTile(title: "Cardio", value: devices.currentHeartRate.map(String.init) ?? "--", unit: "bpm",
                            valueSize: 44)
-                MetricTile(title: "Cadence", value: devices.cadence.map { String(Int($0.rounded())) } ?? "--",
+                MetricTile(title: "Cadence", value: devices.cadence.map { String(Int(safe: $0)) } ?? "--",
                            unit: "rpm", valueSize: 44)
             }
             .frame(width: 260)
@@ -317,6 +317,19 @@ private struct LiveRideView: View {
                 Button { engine.skipSegment() } label: { Label("Suivant", systemImage: "forward.end.fill") }
                     .disabled(engine.currentSegment == nil)
                     .help("Passer à l'intervalle suivant")
+            } else if let gear = engine.gear {
+                // Sortie libre : vitesses virtuelles (la puissance suit la cadence et le développement).
+                Button { engine.shift(by: -1) } label: { Image(systemName: "minus") }
+                    .keyboardShortcut(.downArrow, modifiers: [])
+                    .disabled(gear <= 1)
+                    .help("Vitesse plus facile (↓)")
+                Text("Vitesse \(gear)/\(VirtualGearbox.ratios.count)")
+                    .monospacedDigit()
+                    .fixedSize()
+                Button { engine.shift(by: 1) } label: { Image(systemName: "plus") }
+                    .keyboardShortcut(.upArrow, modifiers: [])
+                    .disabled(gear >= VirtualGearbox.ratios.count)
+                    .help("Vitesse plus dure (↑)")
             }
             Spacer(minLength: 8)
             Button { MiniOverlay.shared.show(engine: engine, devices: devices) } label: {

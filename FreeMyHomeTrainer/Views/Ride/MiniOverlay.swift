@@ -120,9 +120,18 @@ private struct MiniOverlayView: View {
             HStack(spacing: 12) {
                 Label(devices.currentHeartRate.map(String.init) ?? "--", systemImage: "heart.fill")
                     .foregroundStyle(.red)
-                Label(devices.cadence.map { String(Int($0.rounded())) } ?? "--", systemImage: "arrow.trianglehead.2.clockwise")
+                Label(devices.cadence.map { String(Int(safe: $0)) } ?? "--", systemImage: "arrow.trianglehead.2.clockwise")
                 if let block = engine.blockNumber {
                     Text("Bloc \(block.index)/\(block.count)")
+                } else if let gear = engine.gear {
+                    // Vitesses virtuelles : changeables sans quitter la vidéo en plein écran.
+                    Button { engine.shift(by: -1) } label: { Image(systemName: "minus") }
+                        .disabled(gear <= 1)
+                        .help("Vitesse plus facile")
+                    Text("\(gear)")
+                    Button { engine.shift(by: 1) } label: { Image(systemName: "plus") }
+                        .disabled(gear >= VirtualGearbox.ratios.count)
+                        .help("Vitesse plus dure")
                 }
                 Spacer(minLength: 4)
                 Button { engine.togglePause() } label: {

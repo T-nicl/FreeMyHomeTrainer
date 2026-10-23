@@ -51,6 +51,8 @@ final class WorkoutEngine {
     private(set) var samples: [Sample] = []
     private(set) var laps: [Lap] = []
     private(set) var power3s: Int?
+    /// Vitesse virtuelle engagée (sortie libre) ; nil en séance structurée.
+    private(set) var gear: Int?
 
     @ObservationIgnored var onCue: ((Cue) -> Void)?
 
@@ -61,6 +63,7 @@ final class WorkoutEngine {
     @ObservationIgnored private var seenControlGeneration = 0
     @ObservationIgnored private var stoppedPedalingSince: Date?
     @ObservationIgnored private var bike: VirtualBike
+    @ObservationIgnored private var gearbox = VirtualGearbox()
     @ObservationIgnored private var recentPowers: [Int] = []
     @ObservationIgnored private var lapStart: (date: Date, elapsed: TimeInterval, sample: Int)?
     @ObservationIgnored private var countdownCuedFor: Int?
@@ -77,6 +80,7 @@ final class WorkoutEngine {
         self.source = source
         self.bike = VirtualBike(riderMass: riderWeight)
         self.timeline = workout.map { WorkoutTimeline(workout: $0, ftp: ftp) }
+        if workout == nil { gear = gearbox.gear }
     }
 
     // MARK: - État dérivé
@@ -120,7 +124,7 @@ final class WorkoutEngine {
         lapStart = (now, 0, 0)
         seenControlGeneration = source.controlGeneration
         if timeline == nil {
-            source.setGrade(0)   // sortie libre : pas de consigne ERG
+            sendGearPower(now: now, force: true)   // sortie libre : vitesses virtuelles
         } else {
             updateTarget(now: now, force: true)
         }
@@ -131,10 +135,20 @@ final class WorkoutEngine {
         }
     }
 
-    func togglePause() {
+    func togglePause(now: Date = Date()) {
         switch state {
-        case .running, .autoPaused: state = .paused
-        case .paused: state = .running; stoppedPedalingSince = nil
+        case .running, .autoPaused:
+            state = .paused
+            // Sortie libre : le trainer ne doit pas garder ≈ 200 W pendant qu'on s'arrête.
+            if timeline == nil {
+                source.setTargetPower(0)
+                lastSentTarget = 0
+                lastSentAt = now
+            }
+        case .paused:
+            state = .running
+            stoppedPedalingSince = nil
+            if timeline == nil { sendGearPower(now: now, force: true) }
         default: break
         }
     }
@@ -146,6 +160,15 @@ final class WorkoutEngine {
         // Mise à jour directe (et non via `tick`, qui s'arrête en pause et compterait une seconde
         // mesure de puissance) : intervalle, tour et consigne changent tout de suite.
         updateTarget(now: now, force: true)
+    }
+
+    /// Change de vitesse virtuelle (sortie libre) ; la nouvelle puissance part tout de suite.
+    func shift(by delta: Int, now: Date = Date()) {
+        guard timeline == nil, isActive else { return }
+        gearbox.shift(by: delta)
+        gear = gearbox.gear
+        // En pause, la nouvelle vitesse sera appliquée à la reprise.
+        if state == .running { sendGearPower(now: now, force: true) }
     }
 
     func adjustIntensity(by delta: Double, now: Date = Date()) {
@@ -161,7 +184,8 @@ final class WorkoutEngine {
         if let noSleepActivity { ProcessInfo.processInfo.endActivity(noSleepActivity) }
         noSleepActivity = nil
         // Arrêt en cours de séance : le trainer ne doit pas rester bloqué sur la consigne ERG.
-        if timeline != nil, !isWorkoutComplete { source.setGrade(0) }
+        // Sortie libre : la puissance des vitesses virtuelles est aussi une consigne ERG.
+        if timeline == nil || !isWorkoutComplete { source.setGrade(0) }
         closeLap(now: now)
         state = .finished
     }
@@ -194,7 +218,11 @@ final class WorkoutEngine {
         speedKmh = bike.speed * 3.6
         distance += bike.speed * dt
 
-        updateTarget(now: now, force: false)
+        if timeline == nil {
+            sendGearPower(now: now, force: false)
+        } else {
+            updateTarget(now: now, force: false)
+        }
         if dt > 0 { recordSample(now: now) }
     }
 
@@ -204,7 +232,9 @@ final class WorkoutEngine {
         guard source.controlGeneration != seenControlGeneration else { return }
         seenControlGeneration = source.controlGeneration
         lastSentTarget = nil
-        if timeline == nil || isWorkoutComplete {
+        if timeline == nil {
+            sendGearPower(now: now, force: true)
+        } else if isWorkoutComplete {
             source.setGrade(0)
         } else {
             updateTarget(now: now, force: true)
@@ -226,6 +256,26 @@ final class WorkoutEngine {
         default:
             break
         }
+    }
+
+    /// Sortie libre : puissance d'un vélo sur le plat pour la cadence et la vitesse engagée.
+    /// Renvoyée au plus une fois par seconde et seulement si elle change d'au moins 5 W
+    /// (la cadence varie sans cesse) ; tout de suite après un changement de vitesse. La hausse
+    /// est limitée (`maxRampPerSecond`) : la consigne rejoint la cible en quelques secondes.
+    private func sendGearPower(now: Date, force: Bool) {
+        var target = gearbox.power(cadence: source.cadence ?? 0, bike: bike)
+        let base = lastSentTarget ?? 0
+        if target > base {
+            let dt = lastSentAt.map { now.timeIntervalSince($0) } ?? 2
+            let allowed = VirtualGearbox.maxRampPerSecond * min(max(dt, 0.2), 2)
+            target = min(target, base + Int(safe: allowed))
+        }
+        let canSend = force || lastSentAt.map { now.timeIntervalSince($0) >= 1 } ?? true
+        let changed = lastSentTarget.map { abs(target - $0) >= 5 } ?? true
+        guard canSend, force || changed else { return }
+        source.setTargetPower(target)
+        lastSentTarget = target
+        lastSentAt = now
     }
 
     private func updateTarget(now: Date, force: Bool) {
@@ -267,7 +317,7 @@ final class WorkoutEngine {
                               elapsed: elapsed,
                               position: timeline == nil ? nil : position,
                               power: source.power,
-                              cadence: source.cadence.map { Int($0.rounded()) },
+                              cadence: source.cadence.map { Int(safe: $0) },
                               heartRate: source.currentHeartRate,
                               speed: bike.speed,
                               distance: distance,

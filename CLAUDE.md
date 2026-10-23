@@ -41,7 +41,7 @@ open build/Build/Products/Debug/FreeMyHomeTrainer.app
 | --- | --- |
 | `Model/` | `Workout` / `WorkoutBlock` (JSON simple, prévu pour être généré par un LLM), `WorkoutTimeline` (aplatissement), `IntensityRating` (note 1–5), opérations d'arbre de blocs, SwiftData (`SavedWorkout`, `ActivityRecord`) |
 | `Bluetooth/` | `DeviceManager` (CoreBluetooth, FTMS + cardio, reconnexion), `FTMSParser`, `SimulatedTrainer` |
-| `Engine/` | `WorkoutEngine` (déroulé, consignes ERG, pauses), `VirtualBike` (vitesse/distance fictives), `ActivityMetrics` |
+| `Engine/` | `WorkoutEngine` (déroulé, consignes ERG, pauses), `VirtualBike` (vitesse/distance fictives), `VirtualGearbox` (vitesses virtuelles en sortie libre, consigne ERG), `ActivityMetrics` |
 | `Export/` | `FITEncoder` (maison), `GarminClient` (non officiel), `UploadCenter`, Trousseau, `OllamaClient` |
 | `Views/` | Rouler (écran d'accueil, mini-fenêtre flottante), Séances (éditeur), Historique, Réglages |
 

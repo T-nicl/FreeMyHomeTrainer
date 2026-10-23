@@ -34,11 +34,13 @@
 		9B7C4CD82C22DA079EB9E301 /* Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FC1026EBB5CB11A1DE1B4E /* Workout.swift */; };
 		9DCF763CC0A52C71CD4D95D2 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354CB7618529C0BA2869063F /* Persistence.swift */; };
 		9F4D049B1256E88E6E810718 /* WorkoutBlockTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D35515D18748CBAFAD62E72 /* WorkoutBlockTree.swift */; };
+		A1A0B08F00BF08657EFA5925 /* VirtualGearsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AB41766B808C5F765BA4467 /* VirtualGearsTests.swift */; };
 		AE46687D92E230345571F2D1 /* RideReliabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1D64BB37CE61542C52BE430 /* RideReliabilityTests.swift */; };
 		B3E0A1EDC6958A374238197E /* ActivitySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACE0A0A76F0405938A09ADD9 /* ActivitySaver.swift */; };
 		B7411D825FE9443662C68F85 /* WorkoutLimitsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193EF11B0471FA99544244B8 /* WorkoutLimitsTests.swift */; };
 		BFD4339CE1D9D81DFD6D0156 /* WorkoutEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BEF7C745427FCA98BBF8B7D /* WorkoutEngine.swift */; };
 		C025D0B9E9631877343B2F8D /* WorkoutSanity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15745E1CC2913E9808775697 /* WorkoutSanity.swift */; };
+		C1795C9867F7DC7B452AAADF /* VirtualGearbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC89A597A656682BB0A230F /* VirtualGearbox.swift */; };
 		C8B7DFF366DFB64210E4CA8B /* BlockTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 215AB9F2542D404814BE3ED7 /* BlockTimeline.swift */; };
 		CC3120580A07A891207C3F1E /* FreeMyHomeTrainerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDA9852FB01644CBB5AE1C38 /* FreeMyHomeTrainerTests.swift */; };
 		D1425A36B5DCDDA62CF27A99 /* WorkoutGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F953348F03E01E54141D3A /* WorkoutGenerator.swift */; };
@@ -86,6 +88,8 @@
 		731525CDD980AAC6226BEDBA /* VirtualBike.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualBike.swift; sourceTree = "<group>"; };
 		7480AF1FA5388DF6640D50CB /* MiniOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniOverlay.swift; sourceTree = "<group>"; };
 		762D255797D536FD6F0E4BDE /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		7AB41766B808C5F765BA4467 /* VirtualGearsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualGearsTests.swift; sourceTree = "<group>"; };
+		7AC89A597A656682BB0A230F /* VirtualGearbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualGearbox.swift; sourceTree = "<group>"; };
 		81FBACACD07BDF2F44512052 /* FreeMyHomeTrainerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FreeMyHomeTrainerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		91243D630AAA1070AD1E18FD /* FTMSParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FTMSParser.swift; sourceTree = "<group>"; };
 		96F953348F03E01E54141D3A /* WorkoutGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutGenerator.swift; sourceTree = "<group>"; };
@@ -256,6 +260,7 @@
 			children = (
 				9B74FE814B76070EBE93518B /* ActivityMetrics.swift */,
 				731525CDD980AAC6226BEDBA /* VirtualBike.swift */,
+				7AC89A597A656682BB0A230F /* VirtualGearbox.swift */,
 				4BEF7C745427FCA98BBF8B7D /* WorkoutEngine.swift */,
 			);
 			path = Engine;
@@ -300,6 +305,7 @@
 				CDA9852FB01644CBB5AE1C38 /* FreeMyHomeTrainerTests.swift */,
 				E1D64BB37CE61542C52BE430 /* RideReliabilityTests.swift */,
 				4D9EF818FF8AB1533B7AA029 /* RideScreenTests.swift */,
+				7AB41766B808C5F765BA4467 /* VirtualGearsTests.swift */,
 				BBF68DBEB0CD745EB9F9090A /* WorkoutGeneratorTests.swift */,
 				193EF11B0471FA99544244B8 /* WorkoutLimitsTests.swift */,
 			);
@@ -404,6 +410,7 @@
 				CC3120580A07A891207C3F1E /* FreeMyHomeTrainerTests.swift in Sources */,
 				AE46687D92E230345571F2D1 /* RideReliabilityTests.swift in Sources */,
 				81BFD4D053C394B5D0F51FC8 /* RideScreenTests.swift in Sources */,
+				A1A0B08F00BF08657EFA5925 /* VirtualGearsTests.swift in Sources */,
 				3A404D488861CAB50B284958 /* WorkoutGeneratorTests.swift in Sources */,
 				B7411D825FE9443662C68F85 /* WorkoutLimitsTests.swift in Sources */,
 			);
@@ -438,6 +445,7 @@
 				5B41FBC08B42349E01DB5D01 /* SimulatedTrainer.swift in Sources */,
 				5C80F252E2BF580A4342CD2B /* UploadCenter.swift in Sources */,
 				64687CD55F2963B035A3941A /* VirtualBike.swift in Sources */,
+				C1795C9867F7DC7B452AAADF /* VirtualGearbox.swift in Sources */,
 				9B7C4CD82C22DA079EB9E301 /* Workout.swift in Sources */,
 				ECBB83C29D26F6E55C1600AE /* WorkoutAssistantSheet.swift in Sources */,
 				9F4D049B1256E88E6E810718 /* WorkoutBlockTree.swift in Sources */,
