@@ -79,6 +79,7 @@ connect.garmin.com ou strava.com.
 
 ## Développement
 
+- Spécification fonctionnelle (écrans, règles de calcul, format des séances) : [SPEC.md](SPEC.md).
 - SwiftUI + Swift 6, SwiftData, Swift Charts, CoreBluetooth. Aucune dépendance externe.
 - Le projet Xcode est généré par [XcodeGen](https://github.com/yonaskolb/XcodeGen) à partir de
   `project.yml` : après une modification de `project.yml`, lance `xcodegen generate`.

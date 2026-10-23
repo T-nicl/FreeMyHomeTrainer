@@ -5,6 +5,18 @@ sans monde virtuel ni partie en ligne. Matériel de référence : Wahoo KICKR Co
 FTMS / mode ERG + ceinture cardio BLE. L'utilisateur est francophone : **interface, commentaires
 et messages de commit en français**.
 
+**Documents** : `SPEC.md` = ce que fait l'app et ses règles (fait foi, à tenir à jour à chaque
+évolution) ; `README.md` = installation ; ce fichier = comment le code est fait.
+
+## Façon de travailler (choix de l'utilisateur)
+
+- **Nouvelles fonctionnalités** : passer par les workflows ECC (`/ecc:orch-add-feature` : recherche,
+  plan, tests d'abord, relecture, commit ; `/ecc:orch-change-feature` pour modifier un
+  comportement ; `/ecc:orch-fix-defect` pour un bug : test de régression d'abord).
+- **Relecture** : après un lot de changements Swift, lancer `ecc:swift-reviewer` ; pour ce qui
+  touche aux identifiants, au réseau ou à la distribution, `ecc:security-reviewer`.
+- Mettre à jour `SPEC.md` dans le même commit que tout changement de comportement.
+
 ## Commandes
 
 ```sh
