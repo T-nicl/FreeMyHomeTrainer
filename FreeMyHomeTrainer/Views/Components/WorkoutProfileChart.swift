@@ -223,7 +223,8 @@ struct SanityBanner: View {
                 }
             }
             .font(.callout)
-            .fixedSize(horizontal: false, vertical: true)
+            // Pas de `.fixedSize(vertical:)` ici : dans l'écran Rouler (VStack + Spacer), il
+            // rendait la mise en page insoluble et la fenêtre entière s'affichait vide.
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
             .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))

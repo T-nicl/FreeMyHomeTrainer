@@ -74,6 +74,11 @@ open build/Build/Products/Debug/FreeMyHomeTrainer.app
   longues (elles débordent et coupent la fenêtre) : préférer `ViewThatFits` / lignes adaptatives.
   Dans un `Form`, un `TextField("Titre", …)` affiche son titre en double → `TextField("", …)` +
   `.labelsHidden()`.
+- **Fenêtre entièrement blanche, sans plantage ni message** = mise en page SwiftUI insoluble.
+  Vécu avec `.fixedSize(horizontal: false, vertical: true)` sur un texte multiligne dans un
+  `VStack` contenant un `Spacer` (écran Rouler). Ne pas l'utiliser hors `ScrollView`. Le test
+  `RideScreenTests` dessine la vraie fenêtre hors écran pour détecter ce cas : s'en inspirer pour
+  reproduire un bug d'affichage (rendu `NSHostingView` → `cacheDisplay` → image).
 - **Mini-fenêtre** : `NSPanel` non activant, `.canJoinAllSpaces` + `.fullScreenAuxiliary`. Pour
   revenir à l'app depuis l'arrière-plan, `NSApp.activate()` ne suffit pas (macOS 14) : passer
   aussi par `NSWorkspace.openApplication`.

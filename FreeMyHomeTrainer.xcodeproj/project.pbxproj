@@ -26,6 +26,7 @@
 		688B90E8F1362EA92D9C6B46 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8394D2A40CB6C42A11EEC6 /* SettingsView.swift */; };
 		7118FB545DB8125F6DD6549D /* DevicesPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE1FBDC32370741BBD0A752 /* DevicesPanel.swift */; };
 		7937BDA3817FF23D5C6E2086 /* AccountsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B2CEC85A53C5623DE458F7 /* AccountsPanel.swift */; };
+		81BFD4D053C394B5D0F51FC8 /* RideScreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9EF818FF8AB1533B7AA029 /* RideScreenTests.swift */; };
 		85E5E4659FB5A6B57E2B5E22 /* WorkoutProfileChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E245291FC36E9EA2D3F12DC /* WorkoutProfileChart.swift */; };
 		9B7C4CD82C22DA079EB9E301 /* Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FC1026EBB5CB11A1DE1B4E /* Workout.swift */; };
 		9DCF763CC0A52C71CD4D95D2 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354CB7618529C0BA2869063F /* Persistence.swift */; };
@@ -63,6 +64,7 @@
 		3722F2EE869D6B3C8F339894 /* IntensityRating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntensityRating.swift; sourceTree = "<group>"; };
 		3CE1FBDC32370741BBD0A752 /* DevicesPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesPanel.swift; sourceTree = "<group>"; };
 		4BEF7C745427FCA98BBF8B7D /* WorkoutEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutEngine.swift; sourceTree = "<group>"; };
+		4D9EF818FF8AB1533B7AA029 /* RideScreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideScreenTests.swift; sourceTree = "<group>"; };
 		4F6E3CB37160804060EB7AF0 /* GarminClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GarminClient.swift; sourceTree = "<group>"; };
 		53144CEFDCB0C40CA29E3A6A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5547BC7A0A1AA2605E006364 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -275,6 +277,7 @@
 			isa = PBXGroup;
 			children = (
 				CDA9852FB01644CBB5AE1C38 /* FreeMyHomeTrainerTests.swift */,
+				4D9EF818FF8AB1533B7AA029 /* RideScreenTests.swift */,
 			);
 			path = FreeMyHomeTrainerTests;
 			sourceTree = "<group>";
@@ -374,6 +377,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CC3120580A07A891207C3F1E /* FreeMyHomeTrainerTests.swift in Sources */,
+				81BFD4D053C394B5D0F51FC8 /* RideScreenTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
