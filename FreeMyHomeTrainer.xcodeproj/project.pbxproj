@@ -27,6 +27,7 @@
 		65F1B7547D8B7CF3FFF06691 /* BlockDrag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975D3896F35C1AD4C1FC0CDC /* BlockDrag.swift */; };
 		6765D16693567985D9C3C95D /* IntensityRating.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3722F2EE869D6B3C8F339894 /* IntensityRating.swift */; };
 		688B90E8F1362EA92D9C6B46 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8394D2A40CB6C42A11EEC6 /* SettingsView.swift */; };
+		70D02E485A1AED9526D1BFE5 /* EditorDragLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE97805BCC79B096F19BC826 /* EditorDragLayoutTests.swift */; };
 		7118FB545DB8125F6DD6549D /* DevicesPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE1FBDC32370741BBD0A752 /* DevicesPanel.swift */; };
 		7937BDA3817FF23D5C6E2086 /* AccountsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B2CEC85A53C5623DE458F7 /* AccountsPanel.swift */; };
 		81BFD4D053C394B5D0F51FC8 /* RideScreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9EF818FF8AB1533B7AA029 /* RideScreenTests.swift */; };
@@ -111,6 +112,7 @@
 		E1D64BB37CE61542C52BE430 /* RideReliabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideReliabilityTests.swift; sourceTree = "<group>"; };
 		EE5EC75BB4ECD5680A918C05 /* WorkoutEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutEditorView.swift; sourceTree = "<group>"; };
 		F76FA204368AE0929BEDBCC0 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		FE97805BCC79B096F19BC826 /* EditorDragLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorDragLayoutTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -301,6 +303,7 @@
 		FF1273809B0B2A1BA0EE3002 /* FreeMyHomeTrainerTests */ = {
 			isa = PBXGroup;
 			children = (
+				FE97805BCC79B096F19BC826 /* EditorDragLayoutTests.swift */,
 				D6CE25F093ED8DE68BB1D971 /* ExportReliabilityTests.swift */,
 				CDA9852FB01644CBB5AE1C38 /* FreeMyHomeTrainerTests.swift */,
 				E1D64BB37CE61542C52BE430 /* RideReliabilityTests.swift */,
@@ -406,6 +409,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				70D02E485A1AED9526D1BFE5 /* EditorDragLayoutTests.swift in Sources */,
 				067E20203500F16A31438328 /* ExportReliabilityTests.swift in Sources */,
 				CC3120580A07A891207C3F1E /* FreeMyHomeTrainerTests.swift in Sources */,
 				AE46687D92E230345571F2D1 /* RideReliabilityTests.swift in Sources */,

@@ -9,6 +9,10 @@ struct BlockEditBar: View {
     let onDelete: () -> Void
     let onAddChild: (WorkoutBlock.Kind) -> Void
 
+    /// Largeur sous laquelle les lignes passent en colonne (deux champs de puissance côte à côte).
+    private static let narrowWidth: CGFloat = 600
+    @State private var isNarrow = false
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 12) {
@@ -63,15 +67,17 @@ struct BlockEditBar: View {
         .lineLimit(1)
         .padding(14)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+        .onGeometryChange(for: Bool.self) { $0.size.width < Self.narrowWidth } action: { isNarrow = $0 }
     }
 
-    /// Côte à côte si ça tient, sinon les uns sous les autres.
+    /// Côte à côte si la barre est assez large, sinon les uns sous les autres.
+    /// Pas de `ViewThatFits` ici : il recrée ses variantes, donc les champs de saisie, à chaque
+    /// passe de mise en page — et un glisser de bloc en fait une à chaque mouvement de souris.
+    /// `AnyLayout` garde les mêmes champs quand la disposition change.
     private func adaptive(@ViewBuilder _ content: () -> some View) -> some View {
-        let items = content()
-        return ViewThatFits(in: .horizontal) {
-            HStack(spacing: 16) { items }
-            VStack(alignment: .leading, spacing: 10) { items }
-        }
+        let layout = isNarrow ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                              : AnyLayout(HStackLayout(spacing: 16))
+        return layout { content() }
     }
 
     private func field(_ title: String, @ViewBuilder content: () -> some View) -> some View {

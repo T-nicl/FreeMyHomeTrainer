@@ -85,6 +85,12 @@ open build/Build/Products/Debug/FreeMyHomeTrainer.app
   `BlockDragOverlay` lit la position du pointeur ; le corps de l'éditeur ne doit jamais lire
   l'état du glisser (sinon tout se redessine à chaque mouvement). Ne réaffecter une propriété
   observée que si sa valeur change.
+- **Pas de `ViewThatFits` autour de champs de saisie dans l'éditeur** : il recrée ses variantes
+  (donc les `NSTextField`) à chaque passe de mise en page, et un vrai glisser de bloc en fait
+  une par mouvement de souris → saccades dès que la barre d'édition est affichée (44 ms par
+  passe au lieu de 5). Choisir la disposition d'après la largeur mesurée (`onGeometryChange`)
+  avec `AnyLayout`. `EditorDragLayoutTests` le vérifie ; les gestes SwiftUI ne se pilotent pas
+  avec des `NSEvent` simulés dans les tests.
 - **Redimensionnement des blocs** : gestes mesurés en repère `.global`, sinon la poignée qui se
   déplace avec le bloc fait trembler la mesure.
 - **Mise en page** : la fenêtre minimale fait 1000 pt. Éviter les `fixedSize()` sur des lignes

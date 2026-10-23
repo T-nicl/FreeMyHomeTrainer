@@ -16,11 +16,16 @@ struct WorkoutEditorView: View {
 
     @FocusState private var nameFocused: Bool
 
-    init(saved: SavedWorkout, otherNames: [String], onRide: @escaping () -> Void) {
+    /// `dragState` et `selectFirstBlock` ne servent qu'aux tests (glisser simulé).
+    init(saved: SavedWorkout, otherNames: [String], onRide: @escaping () -> Void,
+         dragState: BlockDragState = BlockDragState(), selectFirstBlock: Bool = false) {
         self.saved = saved
         self.otherNames = otherNames
         self.onRide = onRide
-        _draft = State(initialValue: saved.workout)
+        let workout = saved.workout
+        _draft = State(initialValue: workout)
+        _dragState = State(initialValue: dragState)
+        _selectedID = State(initialValue: selectFirstBlock ? workout.blocks.first?.id : nil)
     }
 
     var body: some View {
