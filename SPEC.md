@@ -42,7 +42,8 @@ Disposition inspirée de Zwift, de haut en bas :
   séance terminée.
 - Ligne secondaire, en petit : **temps** roulé, **reste** de la séance, **vitesse** (km/h),
   **distance**.
-- Profil complet avec curseur de position et puissance réelle tracée par-dessus.
+- Profil complet avec curseur de position et puissance réelle tracée par-dessus ; séance terminée
+  (roue libre), le curseur reste au bout du profil et la courbe réelle s'y arrête.
 - Commandes : intensité −5 % / +5 % (flèches ↓ ↑), **Suivant** (passe l'intervalle), **Mini**,
   **Pause** (espace), **Terminer** (avec confirmation).
 - Badges : « En pause », « Pause auto — pédale pour reprendre », « Séance terminée — roue libre ».

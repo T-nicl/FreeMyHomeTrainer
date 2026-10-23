@@ -171,6 +171,19 @@ struct RideReliabilityTests {
         #expect(free.segmentProgress == nil)                  // sortie libre : pas de bloc
     }
 
+    // Régression : séance terminée, roue libre → le curseur et la courbe réelle sortaient du
+    // profil par la droite. Ils s'arrêtent au bout de la séance.
+    @Test func chartMarksStayInsideTheWorkoutAfterTheEnd() {
+        #expect(WorkoutProfileChart.clamped(progress: 3_700, duration: 3_600) == 3_600)
+        #expect(WorkoutProfileChart.clamped(progress: 120, duration: 3_600) == 120)
+        #expect(WorkoutProfileChart.clamped(progress: nil, duration: 3_600) == nil)
+        let samples = [3_590.0, 3_600, 3_610, 3_700].map {
+            Sample(timestamp: t0, elapsed: $0, position: $0, power: 100, cadence: nil, heartRate: nil,
+                   speed: nil, distance: 0, target: nil)
+        }
+        #expect(WorkoutProfileChart.withinWorkout(samples, duration: 3_600).map(\.elapsed) == [3_590, 3_600])
+    }
+
     // Lot 4 — la courbe en direct ne doit pas « glisser » : le pas de sous-échantillonnage
     // change rarement (puissances de 2), et pas toutes les 15 minutes.
     @Test func liveChartStrideIsStable() {

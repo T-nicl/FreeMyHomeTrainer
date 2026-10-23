@@ -37,13 +37,13 @@ struct WorkoutProfileChart: View {
                         Text("FTP").font(.caption2).foregroundStyle(.secondary)
                     }
             }
-            ForEach(actual, id: \.elapsed) { s in
+            ForEach(Self.withinWorkout(actual, duration: timeline.duration), id: \.elapsed) { s in
                 // Position dans la séance : les intervalles sautés laissent un trou, pas un décalage.
                 LineMark(x: .value("Temps", s.position ?? s.elapsed), y: .value("Puissance", s.power ?? 0))
                     .foregroundStyle(.primary)
                     .lineStyle(StrokeStyle(lineWidth: 1.5))
             }
-            if let progress {
+            if let progress = Self.clamped(progress: progress, duration: timeline.duration) {
                 RuleMark(x: .value("Maintenant", progress))
                     .foregroundStyle(.primary)
                     .lineStyle(StrokeStyle(lineWidth: 2))
@@ -94,6 +94,16 @@ struct WorkoutProfileChart: View {
                 .frame(width: width, height: height)
                 .position(x: plot.minX + x0 + inset + width / 2, y: plot.minY + base - height / 2)
         }
+    }
+
+    // Séance terminée, roue libre : la position continue d'avancer, mais Swift Charts ne coupe
+    // pas les marques hors de l'échelle. Le curseur reste au bout, la courbe réelle s'arrête.
+    nonisolated static func clamped(progress: TimeInterval?, duration: TimeInterval) -> TimeInterval? {
+        progress.map { min(max($0, 0), duration) }
+    }
+
+    nonisolated static func withinWorkout(_ samples: [Sample], duration: TimeInterval) -> [Sample] {
+        samples.filter { ($0.position ?? $0.elapsed) <= duration }
     }
 
     private func zone(_ watts: Double) -> Color { PowerZone(watts: watts, ftp: timeline.ftp).color }
