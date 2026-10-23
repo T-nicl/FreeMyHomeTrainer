@@ -151,6 +151,26 @@ struct RideReliabilityTests {
         #expect(source.targets == [250, 120])
     }
 
+    // Écran façon Zwift : barre de progression du bloc en cours (0 au début, 1 à la fin).
+    @Test func segmentProgressFollowsTheCurrentBlock() {
+        let source = MockSource()
+        let e = engine(source)
+        #expect(e.segmentProgress == nil)                     // avant le départ : aucun bloc en cours
+        e.start(at: t0, autoTick: false)
+        #expect(e.segmentProgress == 0)
+        for i in 1...60 { e.tick(now: t0.addingTimeInterval(TimeInterval(i))) }
+        #expect(e.position > 0)
+        #expect(abs((e.segmentProgress ?? -1) - e.position / 600) < 0.0001)
+        e.skipSegment(now: t0.addingTimeInterval(61))
+        #expect(e.segmentProgress == 0)                       // nouveau bloc : barre vide
+        e.skipSegment(now: t0.addingTimeInterval(62))
+        #expect(e.isWorkoutComplete)
+        #expect(e.segmentProgress == nil)                     // séance terminée : plus de bloc
+
+        let free = WorkoutEngine(workout: nil, ftp: 245, source: MockSource())
+        #expect(free.segmentProgress == nil)                  // sortie libre : pas de bloc
+    }
+
     // Lot 4 — la courbe en direct ne doit pas « glisser » : le pas de sous-échantillonnage
     // change rarement (puissances de 2), et pas toutes les 15 minutes.
     @Test func liveChartStrideIsStable() {

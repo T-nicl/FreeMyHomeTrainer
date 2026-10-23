@@ -168,10 +168,11 @@ private struct LiveRideView: View {
     @State private var confirmFinish = false
 
     var body: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 14) {
             header
             metrics
-            intervalBanner
+            blockCard
+            secondaryStats
             chart
             controls
         }
@@ -187,11 +188,6 @@ private struct LiveRideView: View {
             Text(engine.workout?.name ?? "Sortie libre").font(.title.weight(.bold)).lineLimit(1)
             stateBadge.lineLimit(1).fixedSize()
             Spacer()
-            if let remaining = engine.workoutRemaining, !engine.isWorkoutComplete {
-                Text("Reste \(Format.clock(remaining))")
-                    .font(.title3.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 
@@ -212,21 +208,17 @@ private struct LiveRideView: View {
             .foregroundStyle(color)
     }
 
+    /// Les trois chiffres essentiels, en très grand (comme dans Zwift).
     private var metrics: some View {
         let target = engine.targetWatts
         let power = engine.power3s
         return HStack(spacing: 14) {
-            MetricTile(title: "Puissance", value: power.map(String.init) ?? "--", unit: "W",
+            MetricTile(title: "Watts", value: power.map(String.init) ?? "--", unit: "W",
                        caption: target.map { "Cible \($0) W" },
-                       accent: powerColor(power: power, target: target), large: true)
-            MetricTile(title: "Intervalle", value: engine.segmentRemaining.map(Format.clock) ?? "--",
-                       unit: "", caption: engine.currentSegment?.label, large: true)
-            MetricTile(title: "Cadence", value: devices.cadence.map { String(Int($0.rounded())) } ?? "--", unit: "rpm")
+                       accent: powerColor(power: power, target: target))
             MetricTile(title: "Cardio", value: devices.currentHeartRate.map(String.init) ?? "--", unit: "bpm",
                        accent: devices.currentHeartRate == nil ? nil : .red)
-            MetricTile(title: "Vitesse", value: String(format: "%.1f", engine.speedKmh), unit: "km/h",
-                       caption: String(format: "%.2f km", engine.distance / 1000))
-            MetricTile(title: "Temps", value: Format.clock(engine.elapsed), unit: "")
+            MetricTile(title: "Cadence", value: devices.cadence.map { String(Int($0.rounded())) } ?? "--", unit: "rpm")
         }
     }
 
@@ -239,24 +231,59 @@ private struct LiveRideView: View {
         return .green
     }
 
-    @ViewBuilder private var intervalBanner: some View {
-        if let segment = engine.currentSegment {
-            HStack {
-                if let rep = segment.repetition {
-                    Text("Répétition \(rep.index)/\(rep.count)").font(.headline)
+    /// Bloc en cours : libellé, temps restant et barre de progression à la couleur de la zone.
+    @ViewBuilder private var blockCard: some View {
+        if let segment = engine.currentSegment, !engine.isWorkoutComplete {
+            let color = PowerZone(watts: segment.averageWatts, ftp: engine.ftp).color
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(segment.label).font(.title2.weight(.semibold))
+                    if let rep = segment.repetition {
+                        Text("Répétition \(rep.index)/\(rep.count)").font(.title3).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 12)
+                    Text(engine.segmentRemaining.map(Format.clock) ?? "--")
+                        .font(.system(size: 44, weight: .bold, design: .rounded).monospacedDigit())
+                        .layoutPriority(1)
                 }
-                Text(segment.label).font(.headline)
-                Spacer()
-                if let next = engine.nextSegment {
-                    Text("Ensuite : \(next.label)").foregroundStyle(.secondary)
-                } else {
-                    Text("Dernier intervalle").foregroundStyle(.secondary)
-                }
+                // Une barre par bloc : au changement, elle repart de 0 sans animation de trajet.
+                BlockProgressBar(progress: engine.segmentProgress ?? 0, color: color)
+                    .id(segment.start)
+                Text(engine.nextSegment.map { "Ensuite : \($0.label)" } ?? "Dernier bloc")
+                    .foregroundStyle(.secondary)
             }
             .lineLimit(1)
-            .padding(12)
-            .background(PowerZone(watts: segment.averageWatts, ftp: engine.ftp).color.opacity(0.18),
-                        in: RoundedRectangle(cornerRadius: 10))
+            .padding(14)
+            .background(color.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    /// Données secondaires, en petit.
+    private var secondaryStats: some View {
+        ViewThatFits(in: .horizontal) {
+            secondaryRow.font(.title3.monospacedDigit())
+            secondaryRow.font(.body.monospacedDigit())
+        }
+        .lineLimit(1)
+    }
+
+    private var secondaryRow: some View {
+        HStack(spacing: 24) {
+            stat("Temps", Format.clock(engine.elapsed))
+            if let remaining = engine.workoutRemaining, !engine.isWorkoutComplete {
+                stat("Reste", Format.clock(remaining))
+            }
+            stat("Vitesse", String(format: "%.1f km/h", engine.speedKmh))
+            stat("Distance", String(format: "%.2f km", engine.distance / 1000))
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func stat(_ title: String, _ value: String) -> some View {
+        HStack(spacing: 6) {
+            Text(title).foregroundStyle(.secondary)
+            Text(value)
         }
     }
 
@@ -264,9 +291,9 @@ private struct LiveRideView: View {
         let shown = downsampled(engine.samples)
         if let timeline = engine.timeline {
             WorkoutProfileChart(timeline: timeline, actual: shown, progress: engine.position)
-                .frame(minHeight: 180)
+                .frame(minHeight: 140)
         } else {
-            FreeRideChart(samples: shown).frame(minHeight: 180)
+            FreeRideChart(samples: shown).frame(minHeight: 140)
         }
     }
 
@@ -320,27 +347,47 @@ private struct MetricTile: View {
     let unit: String
     var caption: String?
     var accent: Color?
-    var large = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title.uppercased()).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased()).font(.callout.weight(.semibold)).foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(value)
-                    .font(.system(size: large ? 56 : 40, weight: .bold, design: .rounded).monospacedDigit())
+                    .font(.system(size: 76, weight: .bold, design: .rounded).monospacedDigit())
                     .foregroundStyle(accent ?? .primary)
                     .contentTransition(.numericText())
                     .minimumScaleFactor(0.4)
-                if !unit.isEmpty {
-                    Text(unit).font(.title3).foregroundStyle(.secondary).fixedSize()
-                }
+                Text(unit).font(.title2.weight(.medium)).foregroundStyle(.secondary).fixedSize()
             }
-            Text(caption ?? " ").font(.callout).foregroundStyle(.secondary).minimumScaleFactor(0.8)
+            Text(caption ?? " ").font(.title3).foregroundStyle(.secondary).minimumScaleFactor(0.8)
         }
         .lineLimit(1)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Barre de progression du bloc en cours, remplie à la couleur de la zone.
+private struct BlockProgressBar: View {
+    let progress: Double
+    let color: Color
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(.primary.opacity(0.1))
+                Capsule().fill(color)
+                    .frame(width: geo.size.width * min(max(progress, 0), 1))
+                    .animation(.linear(duration: 1), value: progress)
+            }
+        }
+        .frame(height: 14)
+        .accessibilityElement()
+        .accessibilityAddTraits(.updatesFrequently)
+        .accessibilityLabel("Progression du bloc")
+        .accessibilityValue("\(Int(safe: progress * 100)) %")
     }
 }
 

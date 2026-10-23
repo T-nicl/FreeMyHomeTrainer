@@ -32,10 +32,16 @@ Fenêtre de 1000 × 680 points minimum ; aucun contenu ne doit être coupé à c
   demande l'ERG et que le trainer n'a pas accepté le contrôle, un avertissement est affiché.
 
 ### 2.2 Rouler — séance en cours
-- Grands chiffres : **puissance** (moyenne 3 s, verte à ±5 % de la cible, orange en dessous,
-  rouge au-dessus) avec la cible ; **temps restant de l'intervalle** ; cadence ; cardio ;
-  **vitesse** (km/h) avec la distance ; **temps** roulé.
-- Bandeau de l'intervalle : répétition (n / total), intervalle courant, intervalle suivant.
+Disposition inspirée de Zwift, de haut en bas :
+- **Trois grands chiffres**, de même taille : **watts** (moyenne 3 s, verts à ±5 % de la cible,
+  orange en dessous, rouges au-dessus, avec la cible dessous), **cardio** (bpm, en rouge),
+  **cadence** (rpm).
+- **Carte du bloc en cours**, à la couleur de sa zone : libellé (durée @ puissance), répétition
+  (n / total), **temps restant du bloc** en gros, **barre de progression** du bloc (vide au début,
+  pleine à la fin), « Ensuite : … » ou « Dernier bloc ». Masquée en sortie libre et une fois la
+  séance terminée.
+- Ligne secondaire, en petit : **temps** roulé, **reste** de la séance, **vitesse** (km/h),
+  **distance**.
 - Profil complet avec curseur de position et puissance réelle tracée par-dessus.
 - Commandes : intensité −5 % / +5 % (flèches ↓ ↑), **Suivant** (passe l'intervalle), **Mini**,
   **Pause** (espace), **Terminer** (avec confirmation).

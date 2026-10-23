@@ -90,6 +90,13 @@ final class WorkoutEngine {
 
     var segmentRemaining: TimeInterval? { currentSegment.map { $0.end - position } }
 
+    /// Avancement dans le bloc en cours, de 0 à 1 (barre de progression) ; nil sans bloc.
+    var segmentProgress: Double? {
+        guard let s = currentSegment, !isWorkoutComplete else { return nil }
+        guard s.duration > 0 else { return 1 }
+        return min(max((position - s.start) / s.duration, 0), 1)
+    }
+
     var workoutRemaining: TimeInterval? { timeline.map { max($0.duration - position, 0) } }
 
     var isWorkoutComplete: Bool { timeline.map { position >= $0.duration } ?? false }
