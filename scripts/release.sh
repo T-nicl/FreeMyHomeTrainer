@@ -86,7 +86,14 @@ SHA256=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)
     print ""
     print "## Changements"
     print ""
-    git log --pretty='- %s' ${PREVIOUS:+$PREVIOUS..}HEAD | grep -v '^- Version ' || true
+    if [[ -n $PREVIOUS ]]; then
+        git log --pretty='- %s' "$PREVIOUS..HEAD" | grep -v '^- Version ' || true
+    else
+        # Première version : la liste de tous les commits depuis le début serait illisible.
+        print "Première version publique. Fonctionnalités et prise en main : voir le [README](https://github.com/T-nicl/FreeMyHomeTrainer#readme)."
+        print ""
+        print "🚧 La création de séances avec l'IA (Ollama) est en chantier : elle ne fonctionne bien que pour des demandes simples."
+    fi
 } > "$NOTES"
 
 git tag -a "v$VERSION" -m "Version $VERSION"
