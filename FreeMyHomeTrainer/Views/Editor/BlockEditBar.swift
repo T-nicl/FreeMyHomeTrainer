@@ -10,7 +10,7 @@ struct BlockEditBar: View {
     let onAddChild: (WorkoutBlock.Kind) -> Void
 
     /// Largeur sous laquelle les lignes passent en colonne (deux champs de puissance côte à côte).
-    private static let narrowWidth: CGFloat = 600
+    nonisolated private static let narrowWidth: CGFloat = 600
     @State private var isNarrow = false
 
     var body: some View {
