@@ -106,6 +106,7 @@ private struct RideSetupView: View {
                     let timeline = WorkoutTimeline(workout: workout, ftp: ftp)
                     WorkoutProfileChart(timeline: timeline).frame(height: 200)
                     WorkoutSummaryRow(timeline: timeline)
+                    SanityBanner(warnings: WorkoutSanity.warnings(for: workout, ftp: ftp))
                     if !workout.notes.isEmpty {
                         Text(workout.notes).foregroundStyle(.secondary)
                     }

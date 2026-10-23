@@ -3,25 +3,21 @@ import Foundation
 /// Note d'intensité de 1 à 5 (par demi-points), plus parlante que TSS / IF.
 ///
 /// Elle repose sur l'intensité (IF = puissance normalisée / FTP), via une courbe qui monte de
-/// plus en plus vite à l'approche de la FTP, puis tient compte de la durée : une sortie de plus
-/// d'une heure est plus dure (jusqu'à +0,75), une séance de moins de 20 minutes un peu moins.
+/// plus en plus vite à l'approche puis au-delà de la FTP, corrigée en continu par la durée
+/// (référence 1 h : −1,5 au plus pour une séance très courte, +0,75 au plus au-delà de 2 h).
+/// La courbe peut dépasser 5 avant correction : seul le résultat final est borné à 1…5.
 ///
-/// Repères (FTP 245 W) : 45' à 170 W → 1,5 · endurance 1 h → 1,5 · tempo 2x20' → 2 ·
-/// sweet spot 3x10' → 2,5 · VO2 / seuil 2x20' → 4 · 45' à 250 W → 5.
+/// Repères (FTP 245 W) : 45' à 170 W → 1,5 · endurance 1 h → 1,5 · sweet spot 3x10' → 2,5 ·
+/// VO2 / seuil 2x20' → 4 · à 100 % FTP : 10' → 3,5, 26' → 4, 45' → 4,5, 1 h → 5.
 enum IntensityRating {
-    /// Points de la courbe (IF → note), interpolés linéairement.
+    /// Points de la courbe (IF → note avant correction de durée), interpolés linéairement.
     private static let curve: [(intensity: Double, rating: Double)] = [
-        (0.60, 1.0), (0.70, 1.75), (0.85, 3.5), (0.92, 4.25), (1.00, 4.75), (1.05, 5.0),
+        (0.60, 1.0), (0.70, 1.75), (0.85, 3.5), (0.92, 4.25), (1.00, 4.9), (1.05, 5.6), (1.20, 7.0),
     ]
 
     static func value(intensityFactor: Double, hours: Double) -> Double {
-        let durationBonus: Double
-        switch hours {
-        case ..<(1.0 / 3): durationBonus = -0.5
-        case ...1: durationBonus = 0
-        default: durationBonus = min(0.6 * log2(hours), 0.75)
-        }
-        let raw = base(intensityFactor) + durationBonus
+        let durationEffect = hours > 0 ? min(max(0.75 * log2(hours), -1.5), 0.75) : -1.5
+        let raw = base(intensityFactor) + durationEffect
         return min(max((raw * 2).rounded() / 2, 1), 5)
     }
 
@@ -30,7 +26,7 @@ enum IntensityRating {
         for (a, b) in zip(curve, curve.dropFirst()) where intensity <= b.intensity {
             return a.rating + (b.rating - a.rating) * (intensity - a.intensity) / (b.intensity - a.intensity)
         }
-        return 5
+        return curve.last?.rating ?? 5
     }
 
     static func label(_ rating: Double) -> String {

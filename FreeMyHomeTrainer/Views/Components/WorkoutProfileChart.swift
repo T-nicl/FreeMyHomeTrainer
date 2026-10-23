@@ -203,3 +203,30 @@ struct IntensityStars: View {
         PowerZone(watts: 0.45 + rating * 0.15, ftp: 1).color
     }
 }
+
+/// Bandeau orange quand une séance paraît physiquement irréaliste (voir `WorkoutSanity`).
+struct SanityBanner: View {
+    let warnings: [String]
+
+    var body: some View {
+        if !warnings.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Attention, cette séance paraît irréaliste", systemImage: "exclamationmark.triangle.fill")
+                    .font(.headline)
+                    .foregroundStyle(.orange)
+                ForEach(warnings.prefix(3), id: \.self) { warning in
+                    Text("• \(warning)")
+                }
+                if warnings.count > 3 {
+                    Text("… et \(warnings.count - 3) autre\(warnings.count > 4 ? "s" : "") bloc\(warnings.count > 4 ? "s" : "") du même genre.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .font(.callout)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+}

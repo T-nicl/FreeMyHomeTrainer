@@ -38,7 +38,12 @@ open build/Build/Products/Debug/FreeMyHomeTrainer.app
 - **Watts partout par défaut.** Les nouveaux blocs et toute modification enregistrent des
   `.watts` ; `.ftpPercent` n'existe plus que pour les séances d'exemple.
 - **Pas de TSS / IF affichés** : remplacés par `IntensityRating` (étoiles, demi-points). Ils
-  restent calculés pour le fichier FIT.
+  restent calculés pour le fichier FIT. Calibrage validé avec l'utilisateur (FTP 245 W) :
+  45' à 170 W → 1,5 ; 45' à 250 W → 5 ; à 100 % FTP 26' → 4, 45' → 4,5, 1 h → 5. La durée
+  compte en continu ; garder ces cas dans les tests si la courbe change.
+- **Séances irréalistes** : `WorkoutSanity` (modèle de puissance critique, W' ≈ 82 J par W de
+  FTP) affiche un bandeau orange dans l'éditeur et avant de rouler. Simple avertissement, jamais
+  bloquant.
 - **Temps de séance = temps réellement roulé** (`elapsed`) ; la position dans le déroulé
   (`position`) est distincte : sauter un intervalle n'ajoute pas de temps.
 - **Vitesse / distance virtuelles** (`VirtualBike`) : vélo de route sur le plat, ≈ 35 km/h à

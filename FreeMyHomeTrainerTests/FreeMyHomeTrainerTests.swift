@@ -74,9 +74,36 @@ struct WorkoutModelTests {
         #expect(steady(170, minutes: 45) == 1.5)
         #expect(steady(250, minutes: 45) == 5)
         #expect(steady(120, minutes: 45) == 1)
+        // À 100 % de la FTP, plus c'est long, plus c'est dur.
+        #expect(steady(245, minutes: 10) == 3.5)
+        #expect(steady(245, minutes: 26) == 4)
+        #expect(steady(245, minutes: 45) == 4.5)
+        #expect(steady(245, minutes: 60) == 5)
         // La durée pèse au-delà d'une heure, et un peu en moins sous 20 minutes.
         #expect(steady(170, minutes: 180) > steady(170, minutes: 60))
         #expect(steady(200, minutes: 15) < steady(200, minutes: 45))
+    }
+
+    @Test func sanityWarnings() {
+        let ftp = 245
+        func warnings(_ blocks: [WorkoutBlock]) -> [String] {
+            WorkoutSanity.warnings(for: Workout(name: "x", blocks: blocks), ftp: ftp)
+        }
+        // L'exemple de l'utilisateur : 3 × 10' à 400 % FTP.
+        let absurd = warnings([.repeats(3, [.steady(600, .ftpPercent(400)), .steady(300, .ftpPercent(50))])])
+        #expect(absurd.count == 1)
+        #expect(absurd.first?.contains("400 % FTP") == true)
+        #expect(!warnings([.steady(1200, .watts(2500))]).isEmpty)                 // > 2 000 W
+        #expect(!warnings([.steady(7200, .ftpPercent(100))]).isEmpty)             // 2 h au seuil
+
+        // Séances dures mais réalistes : aucun avertissement.
+        #expect(warnings([.repeats(5, [.steady(180, .ftpPercent(118)), .steady(180, .ftpPercent(50))])]).isEmpty)
+        #expect(warnings([.repeats(20, [.steady(30, .ftpPercent(150)), .steady(30, .ftpPercent(50))])]).isEmpty)
+        #expect(warnings([.steady(3600, .ftpPercent(100))]).isEmpty)
+        #expect(warnings([.steady(10, .ftpPercent(400))]).isEmpty)                // sprint de 10 s
+        for sample in Workout.samples {
+            #expect(WorkoutSanity.warnings(for: sample, ftp: ftp).isEmpty, "\(sample.name)")
+        }
     }
 
     @Test func powerZones() {

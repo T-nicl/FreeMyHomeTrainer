@@ -22,6 +22,7 @@ struct WorkoutEditorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header(timeline)
+                SanityBanner(warnings: WorkoutSanity.warnings(for: draft, ftp: ftp))
                 WorkoutProfileChart(timeline: timeline, highlightedRange: selectedRange, showAxes: false, showFTPLine: true)
                     .frame(height: 56)
                 palette
