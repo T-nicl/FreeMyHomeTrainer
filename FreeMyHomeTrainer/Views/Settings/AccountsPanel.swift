@@ -10,6 +10,7 @@ struct AccountsPanel: View {
     @AppStorage(Settings.garminAutoUploadKey) private var garminAuto = false
 
     @State private var showLogin = false
+    @State private var disconnectFailed = false
 
     static let garminBlue = Color(red: 0.0, green: 0.47, blue: 0.75)
 
@@ -34,7 +35,7 @@ struct AccountsPanel: View {
                 Spacer(minLength: 8)
                 if uploads.garminConnected {
                     Button("Déconnecter") {
-                        uploads.garmin.disconnect()
+                        disconnectFailed = !uploads.garmin.disconnect()
                         uploads.refreshAccounts()
                     }
                     .fixedSize()
@@ -70,6 +71,11 @@ struct AccountsPanel: View {
 
         }
         .sheet(isPresented: $showLogin) { GarminLoginSheet() }
+        .alert("Déconnexion incomplète", isPresented: $disconnectFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Le Trousseau macOS a refusé d'effacer la connexion Garmin. Réessaie, ou supprime « fr.timothenicole.FreeMyHomeTrainer » dans l'app Trousseaux d'accès.")
+        }
     }
 }
 

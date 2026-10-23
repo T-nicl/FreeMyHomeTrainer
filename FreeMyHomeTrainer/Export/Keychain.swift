@@ -5,18 +5,28 @@ import Security
 enum Keychain {
     private static let service = "fr.timothenicole.FreeMyHomeTrainer"
 
-    static func set<T: Encodable>(_ value: T?, for account: String) {
+    /// Écrit (ou efface, si `value` est nil) une valeur. Renvoie false si le Trousseau refuse.
+    /// Remarque : l'app utilise le Trousseau « fichier » de macOS, protégé par la liste d'accès de
+    /// l'app ; les attributs d'accessibilité (`kSecAttrAccessible…`) n'y ont pas d'effet.
+    @discardableResult
+    static func set<T: Encodable>(_ value: T?, for account: String) -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
-        SecItemDelete(query as CFDictionary)
-        guard let value, let data = try? JSONEncoder().encode(value) else { return }
+        guard let value else {
+            let deleted = SecItemDelete(query as CFDictionary)
+            return deleted == errSecSuccess || deleted == errSecItemNotFound
+        }
+        guard let data = try? JSONEncoder().encode(value) else { return false }
+        // Mise à jour d'abord : en cas d'échec, l'ancienne valeur n'est pas perdue.
+        let updated = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if updated == errSecSuccess { return true }
+        guard updated == errSecItemNotFound else { return false }
         var add = query
         add[kSecValueData as String] = data
-        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        SecItemAdd(add as CFDictionary, nil)
+        return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
     }
 
     static func get<T: Decodable>(_ type: T.Type, for account: String) -> T? {
@@ -46,19 +56,33 @@ struct MultipartBody {
     }
 
     mutating func addFile(_ name: String, fileName: String, mimeType: String, content: Data) {
-        data.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"; filename=\"\(fileName)\"\r\nContent-Type: \(mimeType)\r\n\r\n".utf8))
+        data.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(Self.headerSafe(name))\"; filename=\"\(Self.headerSafe(fileName))\"\r\nContent-Type: \(mimeType)\r\n\r\n".utf8))
         data.append(content)
         data.append(Data("\r\n".utf8))
     }
 
     func finalized() -> Data { data + Data("--\(boundary)--\r\n".utf8) }
+
+    /// Une valeur d'en-tête ne doit contenir ni guillemet ni retour à la ligne (un nom de séance
+    /// pourrait sinon fermer l'en-tête et en injecter un autre).
+    private static func headerSafe(_ value: String) -> String {
+        let cleaned = value.replacingOccurrences(of: "\"", with: "'")
+            .components(separatedBy: .newlines).joined(separator: " ")
+        return String(String.UnicodeScalarView(cleaned.unicodeScalars.filter {
+            !CharacterSet.controlCharacters.contains($0)
+        }))
+    }
 }
 
 struct HTTPError: LocalizedError {
     let status: Int
     let body: String
 
-    var errorDescription: String? { "Erreur HTTP \(status) : \(body.prefix(300))" }
+    /// Message court : la réponse brute du serveur (`body`) n'est ni affichée ni enregistrée.
+    var errorDescription: String? {
+        status == 401 ? "Erreur \(status) : connexion refusée, reconnecte ton compte."
+                      : "Le serveur a répondu avec l'erreur \(status)."
+    }
 
     /// Vérifie le statut HTTP d'une réponse.
     static func check(_ response: URLResponse, _ data: Data, accept: Set<Int> = Set(200..<300)) throws {

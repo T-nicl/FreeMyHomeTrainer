@@ -25,12 +25,14 @@ final class GarminClient {
     }
 
     enum GarminError: LocalizedError {
-        case unexpectedResponse(String), notConnected, invalidCredentials, wrongCode
+        case unexpectedResponse(String), notConnected, invalidCredentials, wrongCode, keychain, sessionExpired
 
         var errorDescription: String? {
             switch self {
             case .invalidCredentials: "E-mail ou mot de passe Garmin incorrect."
             case .wrongCode: "Code de vérification incorrect."
+            case .keychain: "Impossible d'enregistrer la connexion dans le Trousseau macOS."
+            case .sessionExpired: "Connexion Garmin expirée : reconnecte ton compte dans les Réglages."
             case .unexpectedResponse(let p): "Réponse inattendue de Garmin (\(p)). La connexion Garmin a peut-être changé."
             case .notConnected: "Compte Garmin non connecté."
             }
@@ -57,16 +59,26 @@ final class GarminClient {
         set { Keychain.set(newValue, for: oauth1Account) }
     }
 
+    /// Jeton d'accès (courte durée) : gardé en mémoire, copié dans le Trousseau au mieux. Si le
+    /// Trousseau refuse l'écriture, l'envoi fonctionne quand même avec la copie en mémoire.
+    private var cachedOAuth2: OAuth2Token?
     private var oauth2: OAuth2Token? {
-        get { Keychain.get(OAuth2Token.self, for: oauth2Account) }
-        set { Keychain.set(newValue, for: oauth2Account) }
+        get { cachedOAuth2 ?? Keychain.get(OAuth2Token.self, for: oauth2Account) }
+        set {
+            cachedOAuth2 = newValue
+            Keychain.set(newValue, for: oauth2Account)
+        }
     }
 
     var isConnected: Bool { oauth1 != nil }
 
-    func disconnect() {
-        oauth1 = nil
-        oauth2 = nil
+    /// Efface les jetons. Renvoie false si le Trousseau a refusé (jetons toujours présents).
+    @discardableResult
+    func disconnect() -> Bool {
+        cachedOAuth2 = nil
+        let removed1 = Keychain.set(nil as OAuth1Token?, for: oauth1Account)
+        let removed2 = Keychain.set(nil as OAuth2Token?, for: oauth2Account)
+        return removed1 && removed2
     }
 
     /// Extrait le ticket SSO d'une URL de redirection ou d'une page HTML.
@@ -135,7 +147,7 @@ final class GarminClient {
         }
         guard title == "Success", let ticket = Self.ticket(in: html) else {
             throw title.uppercased().contains("GARMIN") ? GarminError.invalidCredentials
-                                                       : GarminError.unexpectedResponse(title)
+                                                       : GarminError.unexpectedResponse(Self.shortTitle(title))
         }
         try await connect(ticket: ticket)
         return .connected
@@ -166,7 +178,7 @@ final class GarminClient {
     private func get(_ url: URL, referer: URL? = nil) async throws -> String {
         var request = URLRequest(url: url)
         if let referer { request.setValue(referer.absoluteString, forHTTPHeaderField: "Referer") }
-        let (data, response) = try await ssoSession.data(for: request)
+        let (data, response) = try await ssoSession.data(for: request, delegate: RedirectGuard.shared)
         try HTTPError.check(response, data)
         return String(decoding: data, as: UTF8.self)
     }
@@ -177,7 +189,7 @@ final class GarminClient {
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.setValue(referer.absoluteString, forHTTPHeaderField: "Referer")
         request.httpBody = Data(FormEncoding.encode(form).utf8)
-        let (data, response) = try await ssoSession.data(for: request)
+        let (data, response) = try await ssoSession.data(for: request, delegate: RedirectGuard.shared)
         try HTTPError.check(response, data)
         return String(decoding: data, as: UTF8.self)
     }
@@ -203,13 +215,15 @@ final class GarminClient {
         request.setValue(OAuth1.header(method: "GET", url: base, params: query,
                                        consumerKey: consumer.consumer_key, consumerSecret: consumer.consumer_secret),
                          forHTTPHeaderField: "Authorization")
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: request, delegate: RedirectGuard.shared)
         try HTTPError.check(response, data)
         let fields = FormEncoding.decode(String(decoding: data, as: UTF8.self))
         guard let token = fields["oauth_token"], let secret = fields["oauth_token_secret"] else {
             throw GarminError.unexpectedResponse("jeton OAuth1 absent")
         }
-        oauth1 = OAuth1Token(token: token, secret: secret, mfaToken: fields["mfa_token"])
+        // Si le Trousseau refuse le jeton, la connexion ne doit pas paraître réussie.
+        guard Keychain.set(OAuth1Token(token: token, secret: secret, mfaToken: fields["mfa_token"]),
+                           for: oauth1Account) else { throw GarminError.keychain }
         try await refreshOAuth2()
     }
 
@@ -227,12 +241,24 @@ final class GarminClient {
                                        token: o1.token, tokenSecret: o1.secret),
                          forHTTPHeaderField: "Authorization")
         request.httpBody = Data(FormEncoding.encode(form).utf8)
-        let (data, response) = try await session.data(for: request)
-        try HTTPError.check(response, data)
+        let (data, response) = try await session.data(for: request, delegate: RedirectGuard.shared)
+        do {
+            try HTTPError.check(response, data)
+        } catch where Self.shouldRefreshToken(after: error) {
+            // Le jeton de longue durée n'est plus accepté : il faut se reconnecter.
+            disconnect()
+            throw GarminError.sessionExpired
+        }
 
         struct Response: Decodable { var access_token: String; var expires_in: TimeInterval }
         let r = try JSONDecoder().decode(Response.self, from: data)
         oauth2 = OAuth2Token(accessToken: r.access_token, expiresAt: Date().addingTimeInterval(r.expires_in))
+    }
+
+    /// Un 401 signifie que le jeton d'accès n'est plus accepté : on le renouvelle (à partir du
+    /// jeton OAuth 1, valable environ un an) et on réessaie une seule fois.
+    nonisolated static func shouldRefreshToken(after error: Error) -> Bool {
+        (error as? HTTPError)?.status == 401
     }
 
     private func validAccessToken() async throws -> String {
@@ -246,7 +272,22 @@ final class GarminClient {
 
     /// Envoie un .FIT sur Garmin Connect. Un doublon (409) est considéré comme un succès.
     func upload(fit: Data, fileName: String) async throws {
+        // Le jeton est obtenu hors du `do` : seul un 401 de l'envoi déclenche un nouvel essai.
         let token = try await validAccessToken()
+        do {
+            try await send(fit: fit, fileName: fileName, token: token)
+        } catch where Self.shouldRefreshToken(after: error) {
+            oauth2 = nil
+            try await send(fit: fit, fileName: fileName, token: try await validAccessToken())
+        }
+    }
+
+    /// Titre de page Garmin affiché dans une erreur : court et sur une ligne.
+    private static func shortTitle(_ title: String) -> String {
+        String(title.components(separatedBy: .newlines).joined(separator: " ").prefix(60))
+    }
+
+    private func send(fit: Data, fileName: String, token: String) async throws {
         var body = MultipartBody()
         body.addFile("file", fileName: fileName, mimeType: "application/octet-stream", content: fit)
         var request = URLRequest(url: URL(string: "\(Self.connectAPI)/upload-service/upload")!)
@@ -254,7 +295,7 @@ final class GarminClient {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue(body.contentType, forHTTPHeaderField: "Content-Type")
         request.httpBody = body.finalized()
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: request, delegate: RedirectGuard.shared)
         try HTTPError.check(response, data, accept: Set(200..<300).union([409]))
     }
 }
@@ -289,5 +330,21 @@ enum OAuth1 {
         return "OAuth " + oauth.sorted { $0.key < $1.key }
             .map { "\($0.key)=\"\(FormEncoding.percentEncode($0.value))\"" }
             .joined(separator: ", ")
+    }
+}
+
+/// Refuse toute redirection hors de garmin.com : le jeton d'accès (en-tête Authorization) ne
+/// doit jamais partir vers un autre site.
+final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendable {
+    static let shared = RedirectGuard()
+
+    nonisolated static func isAllowed(_ url: URL?) -> Bool {
+        guard let host = url?.host()?.lowercased(), url?.scheme == "https" else { return false }
+        return host == "garmin.com" || host.hasSuffix(".garmin.com")
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest) async -> URLRequest? {
+        Self.isAllowed(request.url) ? request : nil
     }
 }

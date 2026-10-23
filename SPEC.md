@@ -227,8 +227,17 @@ moyenne et max (hors 0), cadence moyenne (hors arrêts), distance.
 - **Fichier .FIT** (vélo d'intérieur) : file_id, events (y compris pauses), records, un lap par
   tour, session (NP, TSS, IF, FTP), activity. Validé avec le SDK FIT officiel de Garmin.
 - **Garmin Connect** (non officiel) : connexion par le formulaire de l'app ; le mot de passe
-  n'est jamais stocké, seuls les jetons vont dans le Trousseau. Envoi manuel par défaut,
-  automatique en option ; un doublon (409) compte comme un succès.
+  n'est jamais stocké, seuls les jetons vont dans le Trousseau (si le Trousseau refuse, la
+  connexion échoue clairement). Envoi manuel par défaut, automatique en option ; un doublon (409)
+  compte comme un succès ; un seul envoi à la fois par sortie.
+  - Jeton d'accès refusé (401) : renouvelé puis un seul nouvel essai. Jeton longue durée refusé :
+    compte déconnecté, message « reconnecte ton compte ».
+  - Envoi interrompu par la fermeture de l'app : marqué en échec au lancement suivant (une fois
+    par lancement), avec « Renvoyer ».
+  - Messages d'erreur courts : jamais la réponse brute du serveur. Aucune redirection suivie hors
+    de garmin.com (HTTPS uniquement).
+- **Fichier .FIT** : une pause est enregistrée quand l'heure avance alors que le temps roulé est
+  arrêté (plus de 1,5 s d'écart) ; heure locale avec le décalage du fuseau, signé.
 - **Strava** : via la synchronisation Garmin Connect → Strava (pas d'envoi direct : l'API
   Strava exige un abonnement payant depuis juin 2026).
 

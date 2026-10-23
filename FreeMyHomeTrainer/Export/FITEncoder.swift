@@ -7,6 +7,8 @@ struct FITActivity: Sendable {
     var ftp: Int
     var samples: [Sample]
     var laps: [Lap]
+    /// Fuseau de l'heure locale écrite dans le fichier (paramètre pour les tests).
+    var timeZone: TimeZone = .current
 }
 
 /// Encodeur FIT minimal pour une activité vélo d'intérieur (protocole FIT 2.0).
@@ -42,8 +44,10 @@ enum FITEncoder {
         ])
         var previous: Sample?
         for s in activity.samples {
-            // Un trou dans les horodatages = une pause : on l'indique par des events timer.
-            if let p = previous, s.timestamp.timeIntervalSince(p.timestamp) > 1.5 {
+            // Pause = l'heure avance alors que le temps roulé est arrêté. (Un simple tic d'horloge
+            // en retard fait avancer les deux ensemble : ce n'est pas une pause.)
+            if let p = previous,
+               s.timestamp.timeIntervalSince(p.timestamp) - (s.elapsed - p.elapsed) > 1.5 {
                 w.write(local: 1, [fitTime(p.timestamp), 0, 4])   // timer stop_all
                 w.write(local: 1, [fitTime(s.timestamp), 0, 0])   // timer start
             }
@@ -103,8 +107,10 @@ enum FITEncoder {
         w.define(local: 5, global: 34, fields: [
             (253, .uint32), (0, .uint32), (1, .uint16), (2, .enum8), (3, .enum8), (4, .enum8), (5, .uint32),
         ])
-        let tz = UInt64(max(TimeZone.current.secondsFromGMT(for: activity.endDate), 0))
-        w.write(local: 5, [end, ms(timerTime), 1, 0, 26, 1, end + tz])
+        // Décalage signé : négatif à l'ouest de Greenwich.
+        let offset = Int64(activity.timeZone.secondsFromGMT(for: activity.endDate))
+        let localEnd = UInt64(clamping: Int64(clamping: end) + offset)
+        w.write(local: 5, [end, ms(timerTime), 1, 0, 26, 1, localEnd])
 
         return w.finalize()
     }

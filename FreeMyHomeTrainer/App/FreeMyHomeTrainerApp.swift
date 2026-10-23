@@ -104,9 +104,11 @@ struct ContentView: View {
 
 private struct SeedSampleWorkouts: ViewModifier {
     @Environment(\.modelContext) private var context
+    @Environment(UploadCenter.self) private var uploads
 
     func body(content: Content) -> some View {
         content.task {
+            uploads.recoverInterruptedUploadsOnce(context: context)
             guard !UserDefaults.standard.bool(forKey: Settings.seededKey) else { return }
             for w in Workout.samples { context.insert(SavedWorkout(w)) }
             UserDefaults.standard.set(true, forKey: Settings.seededKey)
