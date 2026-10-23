@@ -75,6 +75,21 @@ open build/Build/Products/Debug/FreeMyHomeTrainer.app
 - **Swift 6** : classes UI / Bluetooth en `@MainActor` ; délégués CoreBluetooth en conformance
   `@preconcurrency` ; fonctions pures appelées depuis les tests en `nonisolated`.
 
+## Publier une version
+
+`scripts/release.sh X.Y.Z` : met à jour la version dans `project.yml` (+ build), commite, compile
+en Release universel (arm64 + x86_64), vérifie la signature, crée `dist/FreeMyHomeTrainer-X.Y.Z.zip`
+(`ditto`), tague `vX.Y.Z`, pousse et crée la release GitHub avec les instructions d'installation.
+`--build-only` : seulement le `.zip`, sans commit ni publication. **Toujours demander confirmation
+avant de publier** (release publique).
+
+- Pas de compte Apple Developer payant : signature avec le certificat gratuit « Apple
+  Development » de `Config/Local.xcconfig` (expire en juin 2027 ; renouveler via Xcode ›
+  Réglages › Comptes). Sans ce fichier, la signature serait ad hoc et changerait à chaque
+  version (jetons Garmin du Trousseau perdus) : le script refuse de continuer.
+- Pas de notarisation : au premier lancement, l'utilisateur clique « Ouvrir quand même » dans
+  Réglages Système › Confidentialité et sécurité (README, section « Installer l'app »).
+
 ## Commits
 
 Messages en français, première ligne courte, détail si utile, terminés par :

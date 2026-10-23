@@ -38,11 +38,23 @@ struct SettingsView: View {
             Section("Comptes") {
                 AccountsPanel()
             }
+
+            Section {
+                LabeledContent("Version", value: Self.version)
+            }
         }
         .formStyle(.grouped)
         .textFieldStyle(.roundedBorder)
         .navigationTitle("Réglages")
         .frame(maxWidth: 720)
         .frame(maxWidth: .infinity)
+    }
+
+    /// « 0.1.0 (2) » : version affichée pour savoir laquelle tourne sur chaque Mac.
+    private static var version: String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "\(short) (\(build))"
     }
 }

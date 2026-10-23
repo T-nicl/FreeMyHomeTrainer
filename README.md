@@ -19,7 +19,27 @@ Garmin Connect, qui la transmet à Strava.
   synchronisation Garmin → Strava.
 - **Trainer simulé** pour essayer l'app sans vélo.
 
-## Installation (depuis le code)
+## Installer l'app (sans Xcode)
+
+Télécharge la dernière version sur la page
+[Releases](https://github.com/T-nicl/FreeMyHomeTrainer/releases/latest) (fichier
+`FreeMyHomeTrainer-X.Y.Z.zip`), puis :
+
+1. Double-clique sur le `.zip` et glisse **FreeMyHomeTrainer** dans **Applications**.
+2. Ouvre l'app : macOS refuse, car elle n'est pas validée par Apple. Clique sur **OK**.
+3. Ouvre **Réglages Système › Confidentialité et sécurité**, descends tout en bas et clique sur
+   **Ouvrir quand même**, puis confirme avec le mot de passe du Mac. C'est à faire une seule fois.
+4. Autorise le Bluetooth quand l'app le demande.
+
+Pour mettre à jour, remplace l'app dans Applications par la nouvelle version : les séances,
+l'historique et la connexion Garmin sont conservés. Nécessite macOS 15 ou plus récent
+(Apple Silicon ou Intel).
+
+> Pourquoi cet avertissement ? Faire valider (« notariser ») une app par Apple demande le
+> programme Apple Developer payant. L'app est signée avec un certificat gratuit : elle
+> fonctionne normalement, mais macOS demande une confirmation au premier lancement.
+
+## Compiler depuis le code
 
 Prérequis : un Mac sous macOS 15 ou plus récent, et [Xcode](https://apps.apple.com/app/xcode/id497799835) 16 ou plus.
 
@@ -63,6 +83,8 @@ connect.garmin.com ou strava.com.
 - Le projet Xcode est généré par [XcodeGen](https://github.com/yonaskolb/XcodeGen) à partir de
   `project.yml` : après une modification de `project.yml`, lance `xcodegen generate`.
 - Tests : `xcodebuild -scheme FreeMyHomeTrainer test` (ou ⌘U dans Xcode).
+- Publier une version : `scripts/release.sh X.Y.Z` (build universel signé, `.zip`, release
+  GitHub). `scripts/release.sh --build-only` fabrique seulement le `.zip`.
 
 | Dossier | Contenu |
 | --- | --- |

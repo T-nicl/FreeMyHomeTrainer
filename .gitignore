@@ -6,3 +6,6 @@ xcuserdata/
 
 # Réglages personnels (signature)
 Config/Local.xcconfig
+
+# Archives fabriquées par scripts/release.sh
+dist/
